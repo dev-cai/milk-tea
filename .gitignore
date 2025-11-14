@@ -1,0 +1,33 @@
+### OS
+Thumbs.db
+*.DS_Store
+
+### IDE
+.idea/
+.vscode/
+*.iml
+
+### Java / Maven / Gradle
+target/
+build/
+out/
+*.class
+*.jar
+*.war
+*.ear
+
+### Logs
+logs/
+*.log
+
+### Node / Frontend
+node_modules/
+dist/
+.npm/
+.pnpm-store/
+*.local
+
+### Env / config
+*.env
+*.env.local
+
