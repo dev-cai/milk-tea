@@ -62,6 +62,13 @@
         <div class="card-header">
           <span>快速操作</span>
           <div class="header-actions">
+            <el-switch
+              v-model="voiceNotificationEnabled"
+              active-text="语音提醒"
+              inactive-text="静音"
+              style="margin-right: 15px;"
+              @change="handleVoiceToggle"
+            />
             <el-button type="success" @click="batchAcceptOrders" :disabled="selectedOrders.length === 0">
               批量接单 ({{ selectedOrders.length }})
             </el-button>
@@ -277,6 +284,15 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
+// 语音提醒音频
+const notificationAudio = new Audio('/notification.mp3') // 需要在public目录放置提示音文件
+let lastOrderCount = 0 // 记录上次订单数量
+
+// 语音提醒开关状态（从localStorage读取，默认开启）
+const voiceNotificationEnabled = ref(
+  localStorage.getItem('voiceNotificationEnabled') !== 'false'
+)
+
 // 数据定义
 const loading = ref(false)
 const orders = ref([])
@@ -310,9 +326,9 @@ let refreshTimer = null
 
 onMounted(() => {
   loadData()
-  // 每30秒自动刷新
+  // 每30秒自动刷新并检查新订单
   refreshTimer = setInterval(() => {
-    loadPendingCount()
+    checkNewOrders()
   }, 30000)
 })
 
@@ -321,6 +337,63 @@ onUnmounted(() => {
     clearInterval(refreshTimer)
   }
 })
+
+// 检查新订单并播放语音提醒
+const checkNewOrders = async () => {
+  try {
+    const res = await request({
+      url: '/admin/order/pending-count',
+      method: 'get'
+    })
+    if (res.code === 200) {
+      const currentCount = res.data.pending || 0
+      // 如果有新订单（订单数增加）
+      if (lastOrderCount > 0 && currentCount > lastOrderCount) {
+        // 只有在开启语音提醒时才播放
+        if (voiceNotificationEnabled.value) {
+          playNotification()
+        }
+        ElMessage({
+          message: `您有 ${currentCount - lastOrderCount} 个新订单！`,
+          type: 'warning',
+          duration: 5000
+        })
+      }
+      lastOrderCount = currentCount
+      Object.assign(pendingCount, res.data)
+      // 如果当前在待制作标签页，刷新订单列表
+      if (activeTab.value === '1') {
+        loadOrders()
+      }
+    }
+  } catch (error) {
+    console.error('检查新订单失败:', error)
+  }
+}
+
+// 播放语音提醒
+const playNotification = () => {
+  try {
+    notificationAudio.play().catch(err => {
+      console.warn('语音提醒播放失败:', err)
+      // 如果音频播放失败，使用浏览器通知
+      if ('Notification' in window && Notification.permission === 'granted') {
+        new Notification('新订单提醒', {
+          body: '您有新的订单需要处理',
+          icon: '/logo.png'
+        })
+      }
+    })
+  } catch (error) {
+    console.error('播放提醒音失败:', error)
+  }
+}
+
+// 处理语音提醒开关切换
+const handleVoiceToggle = (value) => {
+  localStorage.setItem('voiceNotificationEnabled', value)
+  ElMessage.success(value ? '语音提醒已开启' : '语音提醒已关闭')
+}
 
 // 加载数据
 const loadData = async () => {

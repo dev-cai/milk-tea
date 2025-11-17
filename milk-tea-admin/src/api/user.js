@@ -51,3 +51,13 @@ export function getUserStatistics(id) {
     method: 'get'
   })
 }
+
+// 默认导出
+export default {
+  getList: getUserList,
+  getById: getUserDetail,
+  updateStatus: updateUserStatus,
+  updateMemberLevel: updateMemberLevel,
+  updatePoints: updateUserPoints,
+  getStatistics: getUserStatistics
+}

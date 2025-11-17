@@ -60,3 +60,14 @@ export function updateBannerSort(id, sort) {
     data: { sort }
   })
 }
+
+// 默认导出
+export default {
+  getList: getBannerList,
+  getById: getBannerDetail,
+  create: addBanner,
+  update: updateBanner,
+  delete: deleteBanner,
+  updateStatus: updateBannerStatus,
+  updateSort: updateBannerSort
+}

@@ -18,7 +18,7 @@
           <el-input v-model="queryForm.keyword" placeholder="请输入商品名称" clearable />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="queryForm.categoryId" placeholder="请选择分类" clearable>
+          <el-select v-model="queryForm.categoryId" placeholder="请选择分类" clearable style="width: 150px;">
             <el-option 
               v-for="category in categories" 
               :key="category.id" 
@@ -28,7 +28,8 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
+            <el-option label="全部" value="" />
             <el-option label="上架" :value="1" />
             <el-option label="下架" :value="0" />
           </el-select>

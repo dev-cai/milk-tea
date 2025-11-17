@@ -51,3 +51,13 @@ export function updateCategoryStatus(id, status) {
     data: { status }
   })
 }
+
+// 默认导出
+export default {
+  getList: getCategoryList,
+  getTree: getCategoryTree,
+  create: addCategory,
+  update: updateCategory,
+  delete: deleteCategory,
+  updateStatus: updateCategoryStatus
+}

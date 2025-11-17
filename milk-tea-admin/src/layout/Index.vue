@@ -26,7 +26,7 @@
               <span>{{ child.meta.title }}</span>
             </el-menu-item>
           </el-sub-menu>
-          <el-menu-item v-else-if="route.children && route.children.length === 1" :index="route.children[0].path">
+          <el-menu-item v-else-if="route.children && route.children.length === 1" :index="route.path === '/' ? `/${route.children[0].path}` : `${route.path}/${route.children[0].path}`">
             <el-icon><component :is="route.children[0].meta.icon" /></el-icon>
             <span>{{ route.children[0].meta.title }}</span>
           </el-menu-item>

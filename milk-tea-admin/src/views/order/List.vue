@@ -15,7 +15,7 @@
           <el-input v-model="queryForm.orderNo" placeholder="请输入订单号" clearable />
         </el-form-item>
         <el-form-item label="订单状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="待支付" :value="0" />
             <el-option label="待制作" :value="1" />

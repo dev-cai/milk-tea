@@ -62,6 +62,10 @@
         <div class="card-header">
           <span>会员管理</span>
           <div class="header-actions">
+            <el-button type="warning" @click="showPushDialog" :disabled="selectedUsers.length === 0">
+              <el-icon><Bell /></el-icon>
+              消息推送 ({{ selectedUsers.length }})
+            </el-button>
             <el-button type="success" @click="showBatchDialog" :disabled="selectedUsers.length === 0">
               批量操作 ({{ selectedUsers.length }})
             </el-button>
@@ -77,7 +81,7 @@
           <el-input v-model="queryForm.keyword" placeholder="用户名/手机号" clearable />
         </el-form-item>
         <el-form-item label="会员等级">
-          <el-select v-model="queryForm.memberLevel" placeholder="请选择会员等级" clearable>
+          <el-select v-model="queryForm.memberLevel" placeholder="请选择会员等级" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="普通会员" :value="0" />
             <el-option label="黄金会员" :value="1" />
@@ -85,7 +89,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="正常" :value="1" />
             <el-option label="禁用" :value="0" />
@@ -345,6 +349,57 @@
         <el-button type="primary" @click="handleBatchOperation">确定</el-button>
       </template>
     </el-dialog>
+
+    <!-- 消息推送对话框 -->
+    <el-dialog v-model="pushDialogVisible" title="消息推送" width="600px">
+      <el-form :model="pushForm" label-width="100px">
+        <el-form-item label="推送对象">
+          <span>已选择 {{ selectedUsers.length }} 个用户</span>
+        </el-form-item>
+        <el-form-item label="消息类型">
+          <el-radio-group v-model="pushForm.type">
+            <el-radio label="marketing">营销推广</el-radio>
+            <el-radio label="activity">活动通知</el-radio>
+            <el-radio label="system">系统消息</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="消息标题">
+          <el-input v-model="pushForm.title" placeholder="请输入消息标题" maxlength="50" show-word-limit />
+        </el-form-item>
+        <el-form-item label="消息内容">
+          <el-input
+            v-model="pushForm.content"
+            type="textarea"
+            :rows="5"
+            placeholder="请输入消息内容"
+            maxlength="500"
+            show-word-limit
+          />
+        </el-form-item>
+        <el-form-item label="跳转链接">
+          <el-input v-model="pushForm.link" placeholder="选填，点击消息后跳转的链接" />
+        </el-form-item>
+        <el-form-item label="发送方式">
+          <el-radio-group v-model="pushForm.sendMethod">
+            <el-radio label="immediate">立即发送</el-radio>
+            <el-radio label="scheduled">定时发送</el-radio>
+          </el-radio-group>
+        </el-form-item>
+        <el-form-item label="发送时间" v-if="pushForm.sendMethod === 'scheduled'">
+          <el-date-picker
+            v-model="pushForm.scheduledTime"
+            type="datetime"
+            placeholder="选择发送时间"
+            format="YYYY-MM-DD HH:mm:ss"
+            value-format="YYYY-MM-DD HH:mm:ss"
+          />
+        </el-form-item>
+      </el-form>
+      <template #footer>
+        <el-button @click="pushDialogVisible = false">取消</el-button>
+        <el-button type="primary" @click="handlePushMessage">发送</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -382,6 +437,7 @@ const memberLevelDialogVisible = ref(false)
 const pointsDialogVisible = ref(false)
 const balanceDialogVisible = ref(false)
 const batchDialogVisible = ref(false)
+const pushDialogVisible = ref(false)
 
 const currentUser = ref(null)
 const userStatistics = ref(null)
@@ -403,6 +459,16 @@ const balanceForm = reactive({
 })
 
 const batchOperation = ref('enable')
+
+// 消息推送表单
+const pushForm = reactive({
+  type: 'marketing',
+  title: '',
+  content: '',
+  link: '',
+  sendMethod: 'immediate',
+  scheduledTime: ''
+})
 
 onMounted(() => {
   loadData()
@@ -662,6 +728,69 @@ const showOrderHistory = (user) => {
 const refreshData = () => {
   loadData()
   ElMessage.success('数据已刷新')
+}
+
+// 显示消息推送对话框
+const showPushDialog = () => {
+  if (selectedUsers.value.length === 0) {
+    ElMessage.warning('请先选择要推送消息的用户')
+    return
+  }
+  // 重置表单
+  pushForm.type = 'marketing'
+  pushForm.title = ''
+  pushForm.content = ''
+  pushForm.link = ''
+  pushForm.sendMethod = 'immediate'
+  pushForm.scheduledTime = ''
+  pushDialogVisible.value = true
+}
+
+// 处理消息推送
+const handlePushMessage = async () => {
+  // 验证表单
+  if (!pushForm.title.trim()) {
+    ElMessage.warning('请输入消息标题')
+    return
+  }
+  if (!pushForm.content.trim()) {
+    ElMessage.warning('请输入消息内容')
+    return
+  }
+  if (pushForm.sendMethod === 'scheduled' && !pushForm.scheduledTime) {
+    ElMessage.warning('请选择发送时间')
+    return
+  }
+
+  try {
+    const userIds = selectedUsers.value.map(user => user.id)
+    const res = await request({
+      url: '/admin/user/push-message',
+      method: 'post',
+      data: {
+        userIds,
+        type: pushForm.type,
+        title: pushForm.title,
+        content: pushForm.content,
+        link: pushForm.link,
+        sendMethod: pushForm.sendMethod,
+        scheduledTime: pushForm.scheduledTime
+      }
+    })
+    
+    if (res.code === 200) {
+      const message = pushForm.sendMethod === 'immediate' 
+        ? `消息已发送给 ${selectedUsers.value.length} 个用户`
+        : `定时消息已设置，将于 ${pushForm.scheduledTime} 发送`
+      ElMessage.success(message)
+      pushDialogVisible.value = false
+      // 清空选中
+      selectedUsers.value = []
+    }
+  } catch (error) {
+    console.error('消息推送失败:', error)
+    ElMessage.error('消息推送失败')
+  }
 }
 
 // 工具函数

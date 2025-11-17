@@ -64,9 +64,9 @@
             <div class="card-header">
               <span>会员消费分布</span>
               <el-radio-group v-model="consumptionPeriod" size="small" @change="loadConsumptionAnalysis">
-                <el-radio-button label="7">近7天</el-radio-button>
-                <el-radio-button label="30">近30天</el-radio-button>
-                <el-radio-button label="90">近90天</el-radio-button>
+                <el-radio-button value="7">近7天</el-radio-button>
+                <el-radio-button value="30">近30天</el-radio-button>
+                <el-radio-button value="90">近90天</el-radio-button>
               </el-radio-group>
             </div>
           </template>

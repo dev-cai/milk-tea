@@ -16,14 +16,16 @@
           <el-input v-model="queryForm.keyword" placeholder="请输入优惠券名称" clearable />
         </el-form-item>
         <el-form-item label="类型">
-          <el-select v-model="queryForm.type" placeholder="请选择类型" clearable>
+          <el-select v-model="queryForm.type" placeholder="请选择类型" clearable style="width: 150px;">
+            <el-option label="全部" value="" />
             <el-option label="满减券" :value="1" />
             <el-option label="折扣券" :value="2" />
             <el-option label="兑换券" :value="3" />
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
+            <el-option label="全部" value="" />
             <el-option label="启用" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>

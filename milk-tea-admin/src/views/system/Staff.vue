@@ -74,7 +74,7 @@
           <el-input v-model="queryForm.keyword" placeholder="请输入员工姓名" clearable />
         </el-form-item>
         <el-form-item label="角色">
-          <el-select v-model="queryForm.role" placeholder="请选择角色" clearable>
+          <el-select v-model="queryForm.role" placeholder="请选择角色" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="超级管理员" value="super_admin" />
             <el-option label="店长" value="manager" />
@@ -83,7 +83,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="在职" :value="1" />
             <el-option label="离职" :value="0" />

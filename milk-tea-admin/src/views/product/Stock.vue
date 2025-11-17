@@ -61,7 +61,7 @@
       <template #header>
         <div class="card-header">
           <span>库存预警</span>
-          <el-button type="text" @click="refreshAlerts">刷新</el-button>
+          <el-button link @click="refreshAlerts">刷新</el-button>
         </div>
       </template>
       <div class="alert-list">
@@ -105,7 +105,7 @@
           <el-input v-model="queryForm.keyword" placeholder="请输入商品名称" clearable />
         </el-form-item>
         <el-form-item label="分类">
-          <el-select v-model="queryForm.categoryId" placeholder="请选择分类" clearable>
+          <el-select v-model="queryForm.categoryId" placeholder="请选择分类" clearable style="width: 150px;">
             <el-option
               v-for="category in categories"
               :key="category.id"
@@ -115,7 +115,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="库存状态">
-          <el-select v-model="queryForm.stockStatus" placeholder="请选择库存状态" clearable>
+          <el-select v-model="queryForm.stockStatus" placeholder="请选择库存状态" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="库存充足" value="sufficient" />
             <el-option label="库存不足" value="low" />

@@ -1,5 +1,6 @@
 package com.milktea.common;
 
+import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import lombok.Data;
 
 import java.util.List;
@@ -23,5 +24,14 @@ public class PageResult<T> {
         this.total = total;
         this.current = current;
         this.size = size;
+    }
+
+    public static <T> PageResult<T> of(Page<T> page) {
+        return new PageResult<>(
+                page.getRecords(),
+                page.getTotal(),
+                page.getCurrent(),
+                page.getSize()
+        );
     }
 }

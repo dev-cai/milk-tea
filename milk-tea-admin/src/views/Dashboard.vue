@@ -32,11 +32,11 @@
         <el-card class="stat-card">
           <div class="stat-content">
             <div class="stat-icon" style="background: linear-gradient(135deg, #4facfe 0%, #00f2fe 100%)">
-              <el-icon size="24"><User /></el-icon>
+              <el-icon size="24"><TrendCharts /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">{{ stats.totalUsers }}</div>
-              <div class="stat-label">总用户数</div>
+              <div class="stat-value">¥{{ stats.avgOrderAmount || 22 }}</div>
+              <div class="stat-label">客单价</div>
             </div>
           </div>
         </el-card>
@@ -63,7 +63,7 @@
           <template #header>
             <div class="card-header">
               <span>系统预警</span>
-              <el-button type="text" @click="refreshAlerts">刷新</el-button>
+              <el-button link @click="refreshAlerts">刷新</el-button>
             </div>
           </template>
           <div class="alerts-container">
@@ -92,8 +92,9 @@
             <div class="card-header">
               <span>销售趋势</span>
               <el-radio-group v-model="trendPeriod" size="small" @change="loadSalesTrend">
-                <el-radio-button label="7">近7天</el-radio-button>
-                <el-radio-button label="30">近30天</el-radio-button>
+                <el-radio-button value="7">近7天</el-radio-button>
+                <el-radio-button value="30">近30天</el-radio-button>
+                <el-radio-button value="90">近90天</el-radio-button>
               </el-radio-group>
             </div>
           </template>
@@ -133,7 +134,7 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted, onActivated, onBeforeUnmount } from 'vue'
+import { ref, reactive, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
 import request from '@/utils/request'
@@ -149,7 +150,7 @@ const trendPeriod = ref('7')
 const stats = reactive({
   todayOrders: 0,
   todaySales: 0,
-  totalUsers: 0,
+  avgOrderAmount: 0,  // 客单价
   pendingOrders: 0
 })
 
@@ -167,7 +168,19 @@ onMounted(() => {
 })
 
 onActivated(() => {
-  loadDashboardData()
+  // 使用 nextTick 确保 DOM 已经更新
+  nextTick(() => {
+    // 如果图表已存在，只需调整大小，不重新加载数据
+    if (salesChartInstance && productChartInstance && statusChartInstance && userChartInstance) {
+      salesChartInstance.resize()
+      productChartInstance.resize()
+      statusChartInstance.resize()
+      userChartInstance.resize()
+    } else {
+      // 如果图表不存在，重新加载数据并初始化
+      loadDashboardData()
+    }
+  })
 })
 
 onBeforeUnmount(() => {
@@ -290,8 +303,11 @@ const loadUserGrowth = async () => {
 
 // 初始化销售趋势图表
 const initSalesChart = (data) => {
+  if (!salesChart.value) return
+  
   if (salesChartInstance) {
     salesChartInstance.dispose()
+    salesChartInstance = null
   }
   
   salesChartInstance = echarts.init(salesChart.value)
@@ -347,8 +363,11 @@ const initSalesChart = (data) => {
 
 // 初始化商品排行图表
 const initProductChart = (data) => {
+  if (!productChart.value) return
+  
   if (productChartInstance) {
     productChartInstance.dispose()
+    productChartInstance = null
   }
   
   productChartInstance = echarts.init(productChart.value)
@@ -383,8 +402,11 @@ const initProductChart = (data) => {
 
 // 初始化订单状态图表
 const initStatusChart = (data) => {
+  if (!statusChart.value) return
+  
   if (statusChartInstance) {
     statusChartInstance.dispose()
+    statusChartInstance = null
   }
   
   statusChartInstance = echarts.init(statusChart.value)
@@ -428,8 +450,11 @@ const initStatusChart = (data) => {
 
 // 初始化用户增长图表
 const initUserChart = (data) => {
+  if (!userChart.value) return
+  
   if (userChartInstance) {
     userChartInstance.dispose()
+    userChartInstance = null
   }
   
   userChartInstance = echarts.init(userChart.value)

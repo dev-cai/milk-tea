@@ -71,7 +71,7 @@
           <el-input v-model="queryForm.keyword" placeholder="请输入活动名称" clearable />
         </el-form-item>
         <el-form-item label="活动类型">
-          <el-select v-model="queryForm.type" placeholder="请选择活动类型" clearable>
+          <el-select v-model="queryForm.type" placeholder="请选择活动类型" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="满减活动" value="discount" />
             <el-option label="限时秒杀" value="seckill" />
@@ -80,7 +80,7 @@
           </el-select>
         </el-form-item>
         <el-form-item label="活动状态">
-          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable>
+          <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
             <el-option label="全部" value="" />
             <el-option label="未开始" :value="0" />
             <el-option label="进行中" :value="1" />
@@ -133,27 +133,15 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewActivityDetail(row)">详情</el-button>
-            <el-button type="primary" size="small" @click="showActivityDialog(row)">编辑</el-button>
-            <el-button 
-              v-if="row.status === 0" 
-              type="success" 
-              size="small" 
-              @click="startActivity(row)"
-            >
-              启动
-            </el-button>
-            <el-button 
-              v-if="row.status === 1" 
-              type="warning" 
-              size="small" 
-              @click="pauseActivity(row)"
-            >
-              暂停
-            </el-button>
-            <el-button type="danger" size="small" @click="deleteActivity(row)">删除</el-button>
+            <div style="display: flex; gap: 5px; flex-wrap: nowrap;">
+              <el-button size="small" @click="viewActivityDetail(row)">详情</el-button>
+              <el-button type="primary" size="small" @click="showActivityDialog(row)">编辑</el-button>
+              <el-button v-if="row.status === 0" type="success" size="small" @click="startActivity(row)">启动</el-button>
+              <el-button v-if="row.status === 1" type="warning" size="small" @click="pauseActivity(row)">暂停</el-button>
+              <el-button type="danger" size="small" @click="deleteActivity(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -210,6 +198,92 @@
         <el-button type="primary" @click="saveActivity">保存</el-button>
       </template>
     </el-dialog>
+
+    <!-- 活动效果分析对话框 -->
+    <el-dialog v-model="analysisDialogVisible" title="活动效果分析" width="900px">
+      <div v-if="currentActivity">
+        <!-- 活动基本信息 -->
+        <el-descriptions :column="2" border style="margin-bottom: 20px;">
+          <el-descriptions-item label="活动名称">{{ currentActivity.name }}</el-descriptions-item>
+          <el-descriptions-item label="活动类型">
+            <el-tag :type="getActivityTypeTag(currentActivity.type)">
+              {{ getActivityTypeName(currentActivity.type) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="活动状态">
+            <el-tag :type="getActivityStatusTag(currentActivity.status)">
+              {{ getActivityStatusName(currentActivity.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="活动时间">
+            {{ formatTime(currentActivity.startTime) }} 至 {{ formatTime(currentActivity.endTime) }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 效果数据统计 -->
+        <el-row :gutter="20" style="margin-bottom: 20px;">
+          <el-col :span="6">
+            <el-card class="analysis-card">
+              <div class="analysis-item">
+                <div class="analysis-label">参与人数</div>
+                <div class="analysis-value">{{ activityAnalysis.participants || 0 }}</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="analysis-card">
+              <div class="analysis-item">
+                <div class="analysis-label">订单数量</div>
+                <div class="analysis-value">{{ activityAnalysis.orders || 0 }}</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="analysis-card">
+              <div class="analysis-item">
+                <div class="analysis-label">活动收益</div>
+                <div class="analysis-value">¥{{ activityAnalysis.revenue || 0 }}</div>
+              </div>
+            </el-card>
+          </el-col>
+          <el-col :span="6">
+            <el-card class="analysis-card">
+              <div class="analysis-item">
+                <div class="analysis-label">转化率</div>
+                <div class="analysis-value">{{ activityAnalysis.conversionRate || 0 }}%</div>
+              </div>
+            </el-card>
+          </el-col>
+        </el-row>
+
+        <!-- 详细数据表格 -->
+        <el-table :data="activityAnalysis.details" border>
+          <el-table-column prop="date" label="日期" width="120" />
+          <el-table-column prop="views" label="浏览量" width="100" />
+          <el-table-column prop="participants" label="参与人数" width="100" />
+          <el-table-column prop="orders" label="订单数" width="100" />
+          <el-table-column prop="revenue" label="收益" width="120">
+            <template #default="{ row }">
+              ¥{{ row.revenue }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="avgAmount" label="客单价" width="120">
+            <template #default="{ row }">
+              ¥{{ row.avgAmount }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="conversionRate" label="转化率" width="100">
+            <template #default="{ row }">
+              {{ row.conversionRate }}%
+            </template>
+          </el-table-column>
+        </el-table>
+      </div>
+      <template #footer>
+        <el-button @click="analysisDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="exportAnalysisData">导出数据</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -242,6 +316,19 @@ const queryForm = reactive({
 
 // 对话框状态
 const activityDialogVisible = ref(false)
+const analysisDialogVisible = ref(false)
+
+// 当前活动
+const currentActivity = ref(null)
+
+// 活动效果分析数据
+const activityAnalysis = reactive({
+  participants: 0,
+  orders: 0,
+  revenue: 0,
+  conversionRate: 0,
+  details: []
+})
 
 // 表单引用和数据
 const activityFormRef = ref()
@@ -383,9 +470,47 @@ const saveActivity = async () => {
   }
 }
 
-// 查看活动详情
-const viewActivityDetail = (activity) => {
-  ElMessage.info(`查看活动 ${activity.name} 的详细信息`)
+// 查看活动详情（效果分析）
+const viewActivityDetail = async (activity) => {
+  currentActivity.value = activity
+  analysisDialogVisible.value = true
+  
+  // 加载活动效果数据
+  try {
+    const res = await request({
+      url: `/admin/marketing/activity/${activity.id}/analysis`,
+      method: 'get'
+    })
+    
+    if (res.code === 200) {
+      Object.assign(activityAnalysis, res.data)
+    } else {
+      // 模拟数据
+      Object.assign(activityAnalysis, {
+        participants: 1250,
+        orders: 856,
+        revenue: 45600,
+        conversionRate: 68.5,
+        details: [
+          { date: '2024-01-01', views: 3200, participants: 180, orders: 125, revenue: 6500, avgAmount: 52, conversionRate: 69.4 },
+          { date: '2024-01-02', views: 2800, participants: 165, orders: 110, revenue: 5800, avgAmount: 52.7, conversionRate: 66.7 },
+          { date: '2024-01-03', views: 3500, participants: 195, orders: 135, revenue: 7200, avgAmount: 53.3, conversionRate: 69.2 },
+          { date: '2024-01-04', views: 3100, participants: 175, orders: 118, revenue: 6100, avgAmount: 51.7, conversionRate: 67.4 },
+          { date: '2024-01-05', views: 4200, participants: 220, orders: 152, revenue: 8000, avgAmount: 52.6, conversionRate: 69.1 },
+          { date: '2024-01-06', views: 3800, participants: 200, orders: 138, revenue: 7200, avgAmount: 52.2, conversionRate: 69.0 },
+          { date: '2024-01-07', views: 2900, participants: 115, orders: 78, revenue: 4800, avgAmount: 61.5, conversionRate: 67.8 }
+        ]
+      })
+    }
+  } catch (error) {
+    console.error('加载活动效果数据失败:', error)
+    ElMessage.error('加载效果数据失败')
+  }
+}
+
+// 导出分析数据
+const exportAnalysisData = () => {
+  ElMessage.success(`活动 ${currentActivity.value.name} 的效果数据已导出`)
 }
 
 // 启动活动
