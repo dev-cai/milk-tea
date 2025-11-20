@@ -38,6 +38,12 @@ spring:
           max-wait: -1
           max-idle: 8
           min-idle: 0
+  
+  # 文件上传配置
+  servlet:
+    multipart:
+      max-file-size: 10MB
+      max-request-size: 10MB
 
 # MyBatis Plus配置
 mybatis-plus:
@@ -58,6 +64,13 @@ mybatis-plus:
 jwt:
   secret: milkTeaSecretKey2024ForJavaWebProject
   expiration: 604800
+
+# 文件上传配置
+file:
+  upload:
+    path: D:/Project/Java_Project/javaweb/milk-tea-backend/uploads/
+    url-prefix: /uploads/
+
 
 # 日志配置
 logging:

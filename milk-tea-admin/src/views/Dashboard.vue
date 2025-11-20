@@ -35,7 +35,7 @@
               <el-icon size="24"><TrendCharts /></el-icon>
             </div>
             <div class="stat-info">
-              <div class="stat-value">¥{{ stats.avgOrderAmount || 22 }}</div>
+              <div class="stat-value">¥{{ stats.todayCustomerPrice || stats.avgOrderAmount }}</div>
               <div class="stat-label">客单价</div>
             </div>
           </div>
@@ -137,7 +137,14 @@
 import { ref, reactive, onMounted, onActivated, onBeforeUnmount, nextTick } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import request from '@/utils/request'
+import { 
+  getDashboardStats, 
+  getSalesTrend, 
+  getProductRanking, 
+  getUserGrowth,
+  getAlerts,
+  getOrderStatus
+} from '@/api/dashboard'
 
 const salesChart = ref()
 const productChart = ref()
@@ -211,10 +218,7 @@ const loadDashboardData = async () => {
 // 加载统计数据
 const loadStats = async () => {
   try {
-    const res = await request({
-      url: '/admin/dashboard/stats',
-      method: 'get'
-    })
+    const res = await getDashboardStats()
     if (res.code === 200) {
       Object.assign(stats, res.data)
     }
@@ -226,10 +230,7 @@ const loadStats = async () => {
 // 加载预警信息
 const loadAlerts = async () => {
   try {
-    const res = await request({
-      url: '/admin/dashboard/alerts',
-      method: 'get'
-    })
+    const res = await getAlerts()
     if (res.code === 200) {
       alerts.value = res.data
     }
@@ -241,11 +242,7 @@ const loadAlerts = async () => {
 // 加载销售趋势
 const loadSalesTrend = async () => {
   try {
-    const res = await request({
-      url: '/admin/dashboard/sales-trend',
-      method: 'get',
-      params: { days: trendPeriod.value }
-    })
+    const res = await getSalesTrend({ days: trendPeriod.value })
     if (res.code === 200) {
       initSalesChart(res.data)
     }
@@ -257,11 +254,7 @@ const loadSalesTrend = async () => {
 // 加载商品排行
 const loadProductRanking = async () => {
   try {
-    const res = await request({
-      url: '/admin/dashboard/product-ranking',
-      method: 'get',
-      params: { limit: 10 }
-    })
+    const res = await getProductRanking({ limit: 10 })
     if (res.code === 200) {
       initProductChart(res.data)
     }
@@ -273,10 +266,7 @@ const loadProductRanking = async () => {
 // 加载订单状态
 const loadOrderStatus = async () => {
   try {
-    const res = await request({
-      url: '/admin/dashboard/order-status',
-      method: 'get'
-    })
+    const res = await getOrderStatus()
     if (res.code === 200) {
       initStatusChart(res.data)
     }
@@ -288,11 +278,7 @@ const loadOrderStatus = async () => {
 // 加载用户增长
 const loadUserGrowth = async () => {
   try {
-    const res = await request({
-      url: '/admin/dashboard/user-growth',
-      method: 'get',
-      params: { days: 30 }
-    })
+    const res = await getUserGrowth({ days: 30 })
     if (res.code === 200) {
       initUserChart(res.data)
     }

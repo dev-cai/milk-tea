@@ -124,4 +124,73 @@ public class AuthService {
         
         return Result.success("注册成功");
     }
+    
+    /**
+     * 手机号登录
+     */
+    public Result<Map<String, Object>> phoneLogin(String phone, String code) {
+        // 验证手机号格式
+        if (phone == null || !phone.matches("^1[3-9]\\d{9}$")) {
+            throw new BusinessException("手机号格式不正确");
+        }
+        
+        // 简化版：验证码固定为123456
+        if (!"123456".equals(code)) {
+            throw new BusinessException("验证码错误");
+        }
+        
+        // 查询用户
+        LambdaQueryWrapper<User> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(User::getPhone, phone);
+        User user = userMapper.selectOne(queryWrapper);
+        
+        // 如果用户不存在，自动注册
+        if (user == null) {
+            user = new User();
+            user.setPhone(phone);
+            user.setUsername(phone); // 直接使用手机号作为用户名
+            user.setPassword(MD5Utils.encode("123456")); // 默认密码
+            user.setNickname("用户" + phone.substring(7)); // 昵称显示后4位
+            user.setMemberLevel(0);
+            user.setPoints(0);
+            user.setBalance(BigDecimal.ZERO);
+            user.setUserType(0);
+            user.setStatus(1);
+            
+            userMapper.insert(user);
+            log.info("新用户注册: {}", phone);
+        }
+        
+        // 检查用户状态
+        if (user.getStatus() == 0) {
+            throw new BusinessException("用户已被禁用");
+        }
+        
+        // 更新最后登录时间
+        user.setLastLoginTime(LocalDateTime.now());
+        userMapper.updateById(user);
+        
+        // 生成Token
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getUserType());
+        
+        // 构建返回数据
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", token);
+        
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("id", user.getId());
+        userInfo.put("username", user.getUsername());
+        userInfo.put("nickname", user.getNickname());
+        userInfo.put("phone", user.getPhone());
+        userInfo.put("avatar", user.getAvatar());
+        userInfo.put("memberLevel", user.getMemberLevel());
+        userInfo.put("points", user.getPoints());
+        userInfo.put("balance", user.getBalance());
+        userInfo.put("userType", user.getUserType());
+        result.put("userInfo", userInfo);
+        
+        log.info("用户登录成功: {}", phone);
+        
+        return Result.success("登录成功", result);
+    }
 }

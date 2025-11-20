@@ -123,6 +123,12 @@ export default {
 		if (token) {
 			this.goBack()
 		}
+		
+		// 调试：检查API是否正确加载
+		console.log('API对象:', api)
+		console.log('auth对象:', api.auth)
+		console.log('phoneLogin方法:', api.auth.phoneLogin)
+		console.log('sendCode方法:', api.auth.sendCode)
 	},
 	methods: {
 		// 切换登录方式
@@ -144,7 +150,8 @@ export default {
 			try {
 				uni.showLoading({ title: '登录中...' })
 				
-				const res = await api.auth.login({
+				// 调用手机号登录接口
+				const res = await api.auth.phoneLogin({
 					phone: this.phoneForm.phone,
 					code: this.phoneForm.code
 				})
@@ -154,8 +161,12 @@ export default {
 				}
 			} catch (error) {
 				console.error('登录失败:', error)
+				let errorMsg = '登录失败'
+				if (error && typeof error === 'object') {
+					errorMsg = error.msg || error.message || errorMsg
+				}
 				uni.showToast({
-					title: error.message || '登录失败',
+					title: errorMsg,
 					icon: 'none'
 				})
 			} finally {
@@ -253,19 +264,30 @@ export default {
 			}
 
 			try {
-				// 这里应该调用发送验证码接口
-				// const res = await api.auth.sendCode({ phone: this.phoneForm.phone })
+				console.log('准备发送验证码，手机号:', this.phoneForm.phone)
+				console.log('API.auth.sendCode:', api.auth.sendCode)
 				
-				// 模拟发送成功
-				uni.showToast({
-					title: '验证码已发送',
-					icon: 'success'
-				})
+				const res = await api.auth.sendCode({ phone: this.phoneForm.phone })
 				
-				this.startCountdown()
+				console.log('发送验证码响应:', res)
+				
+				if (res.code === 200) {
+					uni.showToast({
+						title: '验证码已发送（测试：123456）',
+						icon: 'success',
+						duration: 3000
+					})
+					
+					this.startCountdown()
+				}
 			} catch (error) {
+				console.error('发送验证码失败:', error)
+				let errorMsg = '发送失败'
+				if (error && typeof error === 'object') {
+					errorMsg = error.msg || error.message || errorMsg
+				}
 				uni.showToast({
-					title: error.message || '发送失败',
+					title: errorMsg,
 					icon: 'none'
 				})
 			}

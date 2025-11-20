@@ -28,11 +28,13 @@
           </template>
         </el-table-column>
         <el-table-column prop="description" label="描述" min-width="200" />
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="testDevice(row)">测试</el-button>
-            <el-button type="primary" size="small" @click="showDeviceDialog(row)">编辑</el-button>
-            <el-button type="danger" size="small" @click="deleteDevice(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button size="small" @click="testDevice(row)">测试</el-button>
+              <el-button type="primary" size="small" @click="showDeviceDialog(row)">编辑</el-button>
+              <el-button type="danger" size="small" @click="deleteDevice(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -69,14 +71,16 @@
             {{ formatTime(row.createTime) }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="previewTemplate(row)">预览</el-button>
-            <el-button type="primary" size="small" @click="showTemplateDialog(row)">编辑</el-button>
-            <el-button type="success" size="small" @click="setDefaultTemplate(row)" v-if="!row.isDefault">
-              设为默认
-            </el-button>
-            <el-button type="danger" size="small" @click="deleteTemplate(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button size="small" @click="previewTemplate(row)">预览</el-button>
+              <el-button type="primary" size="small" @click="showTemplateDialog(row)">编辑</el-button>
+              <el-button type="success" size="small" @click="setDefaultTemplate(row)" v-if="!row.isDefault">
+                设为默认
+              </el-button>
+              <el-button type="danger" size="small" @click="deleteTemplate(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -108,12 +112,14 @@
           </template>
         </el-table-column>
         <el-table-column prop="errorMessage" label="错误信息" min-width="200" />
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="reprintOrder(row)" v-if="row.status === 2">
-              重新打印
-            </el-button>
-            <el-button size="small" @click="viewPrintContent(row)">查看内容</el-button>
+            <div class="action-buttons">
+              <el-button size="small" @click="reprintOrder(row)" v-if="row.status === 2">
+                重新打印
+              </el-button>
+              <el-button size="small" @click="viewPrintContent(row)">查看内容</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -212,6 +218,52 @@
         <el-button type="primary" @click="testPrint">测试打印</el-button>
       </template>
     </el-dialog>
+
+    <!-- 打印内容查看对话框 -->
+    <el-dialog v-model="printContentVisible" title="打印内容详情" width="700px">
+      <div v-if="currentPrintRecord">
+        <el-descriptions :column="2" border style="margin-bottom: 20px;">
+          <el-descriptions-item label="订单号">{{ currentPrintRecord.orderNo }}</el-descriptions-item>
+          <el-descriptions-item label="打印设备">{{ currentPrintRecord.deviceName }}</el-descriptions-item>
+          <el-descriptions-item label="使用模板">{{ currentPrintRecord.templateName }}</el-descriptions-item>
+          <el-descriptions-item label="打印状态">
+            <el-tag :type="getPrintStatusTag(currentPrintRecord.status)">
+              {{ getPrintStatusName(currentPrintRecord.status) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="打印时间">{{ formatTime(currentPrintRecord.printTime) }}</el-descriptions-item>
+          <el-descriptions-item label="错误信息">
+            {{ currentPrintRecord.errorMessage || '无' }}
+          </el-descriptions-item>
+        </el-descriptions>
+
+        <div class="print-content-section">
+          <h4>打印内容</h4>
+          <div class="print-content-preview">
+            <div class="print-content-text" v-html="currentPrintRecord.content"></div>
+          </div>
+        </div>
+
+        <div class="print-details-section" style="margin-top: 20px;">
+          <h4>打印详情</h4>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="纸张尺寸">{{ currentPrintRecord.paperSize || '80mm' }}</el-descriptions-item>
+            <el-descriptions-item label="打印份数">{{ currentPrintRecord.copies || 1 }}份</el-descriptions-item>
+            <el-descriptions-item label="打印质量">{{ currentPrintRecord.quality || '标准' }}</el-descriptions-item>
+            <el-descriptions-item label="字体大小">{{ currentPrintRecord.fontSize || '12px' }}</el-descriptions-item>
+            <el-descriptions-item label="打印耗时">{{ currentPrintRecord.duration || '2' }}秒</el-descriptions-item>
+            <el-descriptions-item label="重试次数">{{ currentPrintRecord.retryCount || 0 }}次</el-descriptions-item>
+          </el-descriptions>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="printContentVisible = false">关闭</el-button>
+        <el-button type="primary" @click="reprintOrder(currentPrintRecord)" v-if="currentPrintRecord?.status === 2">
+          重新打印
+        </el-button>
+        <el-button type="success" @click="downloadPrintContent">下载内容</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -233,8 +285,10 @@ const printRecords = ref([])
 const deviceDialogVisible = ref(false)
 const templateDialogVisible = ref(false)
 const previewDialogVisible = ref(false)
+const printContentVisible = ref(false)
 
 const previewContent = ref('')
+const currentPrintRecord = ref(null)
 
 // 表单引用
 const deviceFormRef = ref()
@@ -298,29 +352,16 @@ const loadData = async () => {
 const loadDevices = async () => {
   deviceLoading.value = true
   try {
-    // 模拟数据
-    devices.value = [
-      {
-        id: 1,
-        name: '前台打印机',
-        type: 'thermal',
-        ip: '192.168.1.100',
-        port: 9100,
-        status: 1,
-        description: '前台收银打印机'
-      },
-      {
-        id: 2,
-        name: '厨房打印机',
-        type: 'thermal',
-        ip: '192.168.1.101',
-        port: 9100,
-        status: 1,
-        description: '厨房订单打印机'
-      }
-    ]
+    const res = await request({
+      url: '/admin/print/devices',
+      method: 'get'
+    })
+    if (res.code === 200) {
+      devices.value = res.data || []
+    }
   } catch (error) {
     console.error('加载打印设备失败:', error)
+    ElMessage.error('加载打印设备失败')
   } finally {
     deviceLoading.value = false
   }
@@ -330,29 +371,16 @@ const loadDevices = async () => {
 const loadTemplates = async () => {
   templateLoading.value = true
   try {
-    // 模拟数据
-    templates.value = [
-      {
-        id: 1,
-        name: '标准订单小票',
-        type: 'order',
-        width: 80,
-        isDefault: true,
-        content: '订单号: {orderNo}\n客户: {customerName}\n金额: {totalAmount}\n时间: {createTime}',
-        createTime: new Date().toISOString()
-      },
-      {
-        id: 2,
-        name: '厨房制作单',
-        type: 'kitchen',
-        width: 80,
-        isDefault: false,
-        content: '制作单\n订单号: {orderNo}\n商品: {items}\n时间: {createTime}',
-        createTime: new Date().toISOString()
-      }
-    ]
+    const res = await request({
+      url: '/admin/print/templates',
+      method: 'get'
+    })
+    if (res.code === 200) {
+      templates.value = res.data || []
+    }
   } catch (error) {
     console.error('加载打印模板失败:', error)
+    ElMessage.error('加载打印模板失败')
   } finally {
     templateLoading.value = false
   }
@@ -362,29 +390,16 @@ const loadTemplates = async () => {
 const loadPrintRecords = async () => {
   recordLoading.value = true
   try {
-    // 模拟数据
-    printRecords.value = [
-      {
-        id: 1,
-        orderNo: 'MT202411130001',
-        deviceName: '前台打印机',
-        templateName: '标准订单小票',
-        status: 1,
-        printTime: new Date().toISOString(),
-        errorMessage: ''
-      },
-      {
-        id: 2,
-        orderNo: 'MT202411130002',
-        deviceName: '厨房打印机',
-        templateName: '厨房制作单',
-        status: 2,
-        printTime: new Date().toISOString(),
-        errorMessage: '设备离线'
-      }
-    ]
+    const res = await request({
+      url: '/admin/print/records',
+      method: 'get'
+    })
+    if (res.code === 200) {
+      printRecords.value = res.data || []
+    }
   } catch (error) {
     console.error('加载打印记录失败:', error)
+    ElMessage.error('加载打印记录失败')
   } finally {
     recordLoading.value = false
   }
@@ -415,16 +430,25 @@ const saveDevice = async () => {
   try {
     await deviceFormRef.value.validate()
     
-    if (deviceForm.id) {
-      ElMessage.success('设备更新成功')
-    } else {
-      ElMessage.success('设备添加成功')
-    }
+    const url = deviceForm.id 
+      ? `/admin/print/device/${deviceForm.id}` 
+      : '/admin/print/device'
+    const method = deviceForm.id ? 'put' : 'post'
     
-    deviceDialogVisible.value = false
-    loadDevices()
+    const res = await request({
+      url,
+      method,
+      data: deviceForm
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success(deviceForm.id ? '设备更新成功' : '设备添加成功')
+      deviceDialogVisible.value = false
+      loadDevices()
+    }
   } catch (error) {
     console.error('保存设备失败:', error)
+    ElMessage.error('保存设备失败')
   }
 }
 
@@ -432,10 +456,14 @@ const saveDevice = async () => {
 const testDevice = async (device) => {
   try {
     ElMessage.info('正在测试设备连接...')
-    // 模拟测试
-    setTimeout(() => {
+    const res = await request({
+      url: `/admin/print/device/${device.id}/test`,
+      method: 'post'
+    })
+    if (res.code === 200) {
       ElMessage.success('设备连接正常')
-    }, 1000)
+      loadDevices() // 刷新设备状态
+    }
   } catch (error) {
     console.error('测试设备失败:', error)
     ElMessage.error('设备连接失败')
@@ -451,11 +479,19 @@ const deleteDevice = async (device) => {
       type: 'warning'
     })
     
-    ElMessage.success('设备删除成功')
-    loadDevices()
+    const res = await request({
+      url: `/admin/print/device/${device.id}`,
+      method: 'delete'
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success('设备删除成功')
+      loadDevices()
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除设备失败:', error)
+      ElMessage.error('删除设备失败')
     }
   }
 }
@@ -483,16 +519,25 @@ const saveTemplate = async () => {
   try {
     await templateFormRef.value.validate()
     
-    if (templateForm.id) {
-      ElMessage.success('模板更新成功')
-    } else {
-      ElMessage.success('模板创建成功')
-    }
+    const url = templateForm.id 
+      ? `/admin/print/template/${templateForm.id}` 
+      : '/admin/print/template'
+    const method = templateForm.id ? 'put' : 'post'
     
-    templateDialogVisible.value = false
-    loadTemplates()
+    const res = await request({
+      url,
+      method,
+      data: templateForm
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success(templateForm.id ? '模板更新成功' : '模板创建成功')
+      templateDialogVisible.value = false
+      loadTemplates()
+    }
   } catch (error) {
     console.error('保存模板失败:', error)
+    ElMessage.error('保存模板失败')
   }
 }
 
@@ -513,10 +558,17 @@ const previewTemplate = (template) => {
 // 设为默认模板
 const setDefaultTemplate = async (template) => {
   try {
-    ElMessage.success('已设为默认模板')
-    loadTemplates()
+    const res = await request({
+      url: `/admin/print/template/${template.id}/default`,
+      method: 'put'
+    })
+    if (res.code === 200) {
+      ElMessage.success('已设为默认模板')
+      loadTemplates()
+    }
   } catch (error) {
     console.error('设置默认模板失败:', error)
+    ElMessage.error('设置默认模板失败')
   }
 }
 
@@ -529,11 +581,19 @@ const deleteTemplate = async (template) => {
       type: 'warning'
     })
     
-    ElMessage.success('模板删除成功')
-    loadTemplates()
+    const res = await request({
+      url: `/admin/print/template/${template.id}`,
+      method: 'delete'
+    })
+    
+    if (res.code === 200) {
+      ElMessage.success('模板删除成功')
+      loadTemplates()
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除模板失败:', error)
+      ElMessage.error('删除模板失败')
     }
   }
 }
@@ -542,18 +602,87 @@ const deleteTemplate = async (template) => {
 const reprintOrder = async (record) => {
   try {
     ElMessage.info('正在重新打印...')
-    setTimeout(() => {
+    const res = await request({
+      url: `/admin/print/record/${record.id}/reprint`,
+      method: 'post'
+    })
+    if (res.code === 200) {
       ElMessage.success('打印成功')
       loadPrintRecords()
-    }, 1000)
+    }
   } catch (error) {
     console.error('重新打印失败:', error)
+    ElMessage.error('重新打印失败')
   }
 }
 
 // 查看打印内容
 const viewPrintContent = (record) => {
-  ElMessage.info('查看打印内容功能开发中...')
+  // 模拟完整的打印记录数据
+  currentPrintRecord.value = {
+    ...record,
+    content: generatePrintContent(record),
+    paperSize: '80mm',
+    copies: 1,
+    quality: '标准',
+    fontSize: '12px',
+    duration: '2',
+    retryCount: record.status === 2 ? 1 : 0
+  }
+  printContentVisible.value = true
+}
+
+// 生成打印内容
+const generatePrintContent = (record) => {
+  const content = `
+    <div style="font-family: monospace; font-size: 12px; line-height: 1.4;">
+      <div style="text-align: center; font-weight: bold; margin-bottom: 10px;">
+        ========== 奶茶小店 ==========
+      </div>
+      <div style="margin-bottom: 10px;">
+        订单号: ${record.orderNo}<br>
+        打印时间: ${record.printTime}<br>
+        设备: ${record.deviceName}
+      </div>
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+      <div style="margin-bottom: 10px;">
+        商品清单:<br>
+        珍珠奶茶 x1 ..................... ¥15.00<br>
+        芋泥奶茶 x1 ..................... ¥18.00<br>
+        布丁奶茶 x1 ..................... ¥16.00
+      </div>
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+      <div style="margin-bottom: 10px;">
+        小计: ¥49.00<br>
+        优惠: -¥5.00<br>
+        <strong>总计: ¥44.00</strong>
+      </div>
+      <div style="border-top: 1px dashed #000; margin: 10px 0;"></div>
+      <div style="text-align: center; font-size: 10px;">
+        谢谢惠顾，欢迎再次光临！<br>
+        客服电话: 400-123-4567
+      </div>
+      <div style="text-align: center; margin-top: 10px;">
+        ==============================
+      </div>
+    </div>
+  `
+  return content
+}
+
+// 下载打印内容
+const downloadPrintContent = () => {
+  if (!currentPrintRecord.value) return
+  
+  const content = currentPrintRecord.value.content.replace(/<[^>]*>/g, '')
+  const blob = new Blob([content], { type: 'text/plain;charset=utf-8' })
+  const url = URL.createObjectURL(blob)
+  const link = document.createElement('a')
+  link.href = url
+  link.download = `${currentPrintRecord.value.orderNo}_打印内容.txt`
+  link.click()
+  URL.revokeObjectURL(url)
+  ElMessage.success('打印内容下载成功')
 }
 
 // 测试打印
@@ -648,5 +777,43 @@ const getPrintStatusTag = (status) => {
   padding: 15px;
   border-radius: 4px;
   min-height: 200px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
+}
+
+.print-content-section {
+  margin-top: 20px;
+}
+
+.print-content-preview {
+  background-color: #f5f7fa;
+  border: 1px solid #e4e7ed;
+  border-radius: 4px;
+  padding: 15px;
+  max-height: 400px;
+  overflow-y: auto;
+}
+
+.print-content-text {
+  font-family: 'Courier New', monospace;
+  font-size: 12px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+  color: #303133;
+}
+
+.print-details-section h4 {
+  margin-bottom: 10px;
+  color: #303133;
 }
 </style>

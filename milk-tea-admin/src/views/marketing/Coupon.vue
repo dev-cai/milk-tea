@@ -77,11 +77,13 @@
             />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="240" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
-            <el-button type="info" size="small" @click="handleUsage(row)">使用记录</el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" @click="handleEdit(row)">编辑</el-button>
+              <el-button type="info" size="small" @click="handleUsage(row)">使用记录</el-button>
+              <el-button type="danger" size="small" @click="handleDelete(row)">删除</el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -379,5 +381,17 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 </style>

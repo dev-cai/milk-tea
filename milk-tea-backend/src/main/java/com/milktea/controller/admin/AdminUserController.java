@@ -42,8 +42,7 @@ public class AdminUserController {
      */
     @GetMapping("/{id}")
     public Result<User> getUserDetail(@PathVariable Long id) {
-        // 可以复用UserService的getUserInfo方法
-        return Result.success("获取成功", null);
+        return adminService.getUserDetail(id);
     }
     
     /**

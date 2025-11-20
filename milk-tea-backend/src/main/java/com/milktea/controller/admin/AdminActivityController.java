@@ -1,88 +1,105 @@
 package com.milktea.controller.admin;
 
-import com.baomidou.mybatisplus.extension.plugins.pagination.Page;
 import com.milktea.common.PageResult;
 import com.milktea.common.Result;
-import com.milktea.entity.Activity;
-import com.milktea.service.ActivityService;
-import lombok.RequiredArgsConstructor;
+import com.milktea.entity.MarketingActivity;
+import com.milktea.service.MarketingActivityService;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
- * 营销活动管理控制器
+ * 管理端营销活动控制器
+ * @author MilkTea Team
  */
+@Slf4j
 @RestController
 @RequestMapping("/admin/activity")
-@RequiredArgsConstructor
 public class AdminActivityController {
     
-    private final ActivityService activityService;
+    private final MarketingActivityService activityService;
+    
+    public AdminActivityController(MarketingActivityService activityService) {
+        this.activityService = activityService;
+    }
     
     /**
      * 分页查询活动
      */
     @GetMapping("/page")
-    public Result<PageResult<Activity>> page(@RequestParam(defaultValue = "1") int page,
-                                             @RequestParam(defaultValue = "10") int size,
-                                             @RequestParam(required = false) String keyword) {
-        Page<Activity> pageResult = activityService.page(page, size, keyword);
-        return Result.success(PageResult.of(pageResult));
+    public Result<PageResult<MarketingActivity>> getActivityPage(
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String type,
+            @RequestParam(required = false) Integer status) {
+        return activityService.getActivityPage(page, size, keyword, type, status);
     }
     
     /**
-     * 获取进行中的活动
-     */
-    @GetMapping("/active")
-    public Result<List<Activity>> getActiveList() {
-        List<Activity> list = activityService.getActiveList();
-        return Result.success(list);
-    }
-    
-    /**
-     * 根据ID获取活动
+     * 获取活动详情
      */
     @GetMapping("/{id}")
-    public Result<Activity> getById(@PathVariable Long id) {
-        Activity activity = activityService.getById(id);
-        return Result.success(activity);
+    public Result<MarketingActivity> getActivityById(@PathVariable Long id) {
+        return activityService.getActivityById(id);
     }
     
     /**
      * 创建活动
      */
     @PostMapping
-    public Result<String> create(@RequestBody Activity activity) {
-        activityService.create(activity);
-        return Result.success("创建成功", null);
+    public Result<String> createActivity(@RequestBody MarketingActivity activity) {
+        return activityService.createActivity(activity);
     }
     
     /**
      * 更新活动
      */
     @PutMapping("/{id}")
-    public Result<String> update(@PathVariable Long id, @RequestBody Activity activity) {
-        activity.setId(id);
-        activityService.update(activity);
-        return Result.success("更新成功", null);
+    public Result<String> updateActivity(@PathVariable Long id, @RequestBody MarketingActivity activity) {
+        return activityService.updateActivity(id, activity);
     }
     
     /**
      * 删除活动
      */
     @DeleteMapping("/{id}")
-    public Result<String> delete(@PathVariable Long id) {
-        activityService.delete(id);
-        return Result.success("删除成功", null);
+    public Result<String> deleteActivity(@PathVariable Long id) {
+        return activityService.deleteActivity(id);
+    }
+    
+    /**
+     * 批量删除活动
+     */
+    @DeleteMapping("/batch")
+    public Result<String> batchDeleteActivities(@RequestBody List<Long> ids) {
+        return activityService.batchDeleteActivities(ids);
     }
     
     /**
      * 更新活动状态
      */
     @PutMapping("/{id}/status")
-    public Result<String> updateStatus(@PathVariable Long id, @RequestBody Activity activity) {
-        activityService.updateStatus(id, activity.getStatus());
-        return Result.success("状态更新成功", null);
+    public Result<String> updateActivityStatus(@PathVariable Long id, @RequestBody Map<String, Integer> request) {
+        Integer status = request.get("status");
+        return activityService.updateActivityStatus(id, status);
+    }
+    
+    /**
+     * 获取活动统计
+     */
+    @GetMapping("/statistics")
+    public Result<Map<String, Object>> getActivityStatistics() {
+        return activityService.getActivityStatistics();
+    }
+    
+    /**
+     * 获取活动分析数据
+     */
+    @GetMapping("/{id}/analysis")
+    public Result<Map<String, Object>> getActivityAnalysis(@PathVariable Long id) {
+        return activityService.getActivityAnalysis(id);
     }
 }

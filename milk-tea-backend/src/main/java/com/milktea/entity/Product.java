@@ -43,6 +43,9 @@ public class Product {
     
     private Integer sort;
     
+    @TableField(exist = false)
+    private String categoryName; // 分类名称，非数据库字段
+    
     @TableLogic
     private Integer deleted;
     

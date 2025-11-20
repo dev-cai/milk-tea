@@ -162,14 +162,16 @@
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" fixed="right">
+        <el-table-column label="操作" width="220" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="showStockDialog(row)">
-              库存操作
-            </el-button>
-            <el-button type="success" size="small" @click="quickRestock(row)">
-              快速补货
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" @click="showStockDialog(row)">
+                库存操作
+              </el-button>
+              <el-button type="success" size="small" @click="quickRestock(row)">
+                快速补货
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -612,6 +614,22 @@ const refreshData = () => {
 
 .stock-info {
   margin: 0 20px;
+}
+
+.batch-actions {
+  margin-bottom: 20px;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 
 .search-form {

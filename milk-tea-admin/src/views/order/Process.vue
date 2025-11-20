@@ -620,8 +620,76 @@ const toggleUrgent = async (order) => {
 }
 
 // 打印订单
-const printOrder = (order) => {
-  ElMessage.info('打印功能开发中...')
+const printOrder = async (order) => {
+  try {
+    // 获取打印设备和模板列表
+    const [devicesRes, templatesRes] = await Promise.all([
+      request({ url: '/admin/print/devices', method: 'get' }),
+      request({ url: '/admin/print/templates', method: 'get' })
+    ])
+    
+    if (devicesRes.code !== 200 || templatesRes.code !== 200) {
+      ElMessage.error('获取打印配置失败')
+      return
+    }
+    
+    const devices = devicesRes.data || []
+    const templates = templatesRes.data || []
+    
+    // 检查是否有可用设备
+    const onlineDevices = devices.filter(d => d.status === 1)
+    if (onlineDevices.length === 0) {
+      ElMessage.warning('没有可用的打印设备')
+      return
+    }
+    
+    // 获取默认的订单小票模板
+    let defaultTemplate = templates.find(t => t.type === 'order' && t.isDefault === 1)
+    if (!defaultTemplate && templates.length > 0) {
+      defaultTemplate = templates.find(t => t.type === 'order') || templates[0]
+    }
+    
+    if (!defaultTemplate) {
+      ElMessage.warning('没有可用的打印模板')
+      return
+    }
+    
+    // 使用第一个在线设备
+    const defaultDevice = onlineDevices[0]
+    
+    // 确认打印
+    await ElMessageBox.confirm(
+      `将使用 ${defaultDevice.name} 打印订单 ${order.orderNo}，是否继续？`,
+      '确认打印',
+      {
+        confirmButtonText: '确定',
+        cancelButtonText: '取消',
+        type: 'info'
+      }
+    )
+    
+    // 发送打印请求
+    const printRes = await request({
+      url: '/admin/print/order',
+      method: 'post',
+      data: {
+        orderId: order.id,
+        deviceId: defaultDevice.id,
+        templateId: defaultTemplate.id
+      }
+    })
+    
+    if (printRes.code === 200) {
+      ElMessage.success('打印成功')
+    } else {
+      ElMessage.error(printRes.message || '打印失败')
+    }
+  } catch (error) {
+    if (error !== 'cancel') {
+      console.error('打印订单失败:', error)
+      ElMessage.error('打印失败')
+    }
+  }
 }
 
 // 刷新数据

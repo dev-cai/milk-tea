@@ -290,6 +290,17 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
+import {
+  getActivityList,
+  getActivity,
+  createActivity,
+  updateActivity,
+  deleteActivity as deleteActivityApi,
+  batchDeleteActivities,
+  updateActivityStatus,
+  getActivityStatistics,
+  getActivityAnalysis
+} from '@/api/activity'
 import request from '@/utils/request'
 
 // 数据定义
@@ -365,15 +376,13 @@ const loadData = async () => {
 // 加载活动统计
 const loadActivityStats = async () => {
   try {
-    // 模拟数据
-    Object.assign(activityStats, {
-      total: 25,
-      active: 8,
-      participants: 1580,
-      revenue: 45600
-    })
+    const res = await getActivityStatistics()
+    if (res.code === 200) {
+      Object.assign(activityStats, res.data)
+    }
   } catch (error) {
     console.error('加载活动统计失败:', error)
+    ElMessage.error('加载活动统计失败')
   }
 }
 
@@ -381,7 +390,24 @@ const loadActivityStats = async () => {
 const handleQuery = async () => {
   loading.value = true
   try {
-    // 模拟数据
+    const res = await getActivityList(queryForm)
+    if (res.code === 200) {
+      activities.value = res.data.records
+      total.value = res.data.total
+    }
+  } catch (error) {
+    console.error('查询活动失败:', error)
+    ElMessage.error('查询活动失败')
+  } finally {
+    loading.value = false
+  }
+}
+
+// 原来的模拟数据代码已删除
+const handleQueryOld = async () => {
+  loading.value = true
+  try {
+    // 这是旧的模拟数据代码，已被上面的真实API替换
     activities.value = [
       {
         id: 1,
@@ -456,10 +482,22 @@ const saveActivity = async () => {
   try {
     await activityFormRef.value.validate()
     
+    // 处理时间范围
+    if (activityForm.timeRange && activityForm.timeRange.length === 2) {
+      activityForm.startTime = activityForm.timeRange[0]
+      activityForm.endTime = activityForm.timeRange[1]
+    }
+    
     if (activityForm.id) {
-      ElMessage.success('活动更新成功')
+      const res = await updateActivity(activityForm.id, activityForm)
+      if (res.code === 200) {
+        ElMessage.success('活动更新成功')
+      }
     } else {
-      ElMessage.success('活动创建成功')
+      const res = await createActivity(activityForm)
+      if (res.code === 200) {
+        ElMessage.success('活动创建成功')
+      }
     }
     
     activityDialogVisible.value = false
@@ -467,6 +505,7 @@ const saveActivity = async () => {
     loadActivityStats()
   } catch (error) {
     console.error('保存活动失败:', error)
+    ElMessage.error('保存活动失败')
   }
 }
 
@@ -477,30 +516,14 @@ const viewActivityDetail = async (activity) => {
   
   // 加载活动效果数据
   try {
-    const res = await request({
-      url: `/admin/marketing/activity/${activity.id}/analysis`,
-      method: 'get'
-    })
+    const res = await getActivityAnalysis(activity.id)
     
     if (res.code === 200) {
       Object.assign(activityAnalysis, res.data)
-    } else {
-      // 模拟数据
-      Object.assign(activityAnalysis, {
-        participants: 1250,
-        orders: 856,
-        revenue: 45600,
-        conversionRate: 68.5,
-        details: [
-          { date: '2024-01-01', views: 3200, participants: 180, orders: 125, revenue: 6500, avgAmount: 52, conversionRate: 69.4 },
-          { date: '2024-01-02', views: 2800, participants: 165, orders: 110, revenue: 5800, avgAmount: 52.7, conversionRate: 66.7 },
-          { date: '2024-01-03', views: 3500, participants: 195, orders: 135, revenue: 7200, avgAmount: 53.3, conversionRate: 69.2 },
-          { date: '2024-01-04', views: 3100, participants: 175, orders: 118, revenue: 6100, avgAmount: 51.7, conversionRate: 67.4 },
-          { date: '2024-01-05', views: 4200, participants: 220, orders: 152, revenue: 8000, avgAmount: 52.6, conversionRate: 69.1 },
-          { date: '2024-01-06', views: 3800, participants: 200, orders: 138, revenue: 7200, avgAmount: 52.2, conversionRate: 69.0 },
-          { date: '2024-01-07', views: 2900, participants: 115, orders: 78, revenue: 4800, avgAmount: 61.5, conversionRate: 67.8 }
-        ]
-      })
+      // 如果没有详细数据，使用空数组
+      if (!activityAnalysis.details) {
+        activityAnalysis.details = []
+      }
     }
   } catch (error) {
     console.error('加载活动效果数据失败:', error)
@@ -522,12 +545,16 @@ const startActivity = async (activity) => {
       type: 'warning'
     })
     
-    ElMessage.success('活动启动成功')
-    handleQuery()
-    loadActivityStats()
+    const res = await updateActivityStatus(activity.id, 1)
+    if (res.code === 200) {
+      ElMessage.success('活动启动成功')
+      handleQuery()
+      loadActivityStats()
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('启动活动失败:', error)
+      ElMessage.error('启动活动失败')
     }
   }
 }
@@ -541,12 +568,16 @@ const pauseActivity = async (activity) => {
       type: 'warning'
     })
     
-    ElMessage.success('活动暂停成功')
-    handleQuery()
-    loadActivityStats()
+    const res = await updateActivityStatus(activity.id, 3)
+    if (res.code === 200) {
+      ElMessage.success('活动暂停成功')
+      handleQuery()
+      loadActivityStats()
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('暂停活动失败:', error)
+      ElMessage.error('暂停活动失败')
     }
   }
 }
@@ -560,12 +591,16 @@ const deleteActivity = async (activity) => {
       type: 'warning'
     })
     
-    ElMessage.success('活动删除成功')
-    handleQuery()
-    loadActivityStats()
+    const res = await deleteActivityApi(activity.id)
+    if (res.code === 200) {
+      ElMessage.success('活动删除成功')
+      handleQuery()
+      loadActivityStats()
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除活动失败:', error)
+      ElMessage.error('删除活动失败')
     }
   }
 }

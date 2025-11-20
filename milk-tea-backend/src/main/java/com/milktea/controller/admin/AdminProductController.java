@@ -33,8 +33,18 @@ public class AdminProductController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String keyword) {
-        return productService.getProductPage(page, size, categoryId, keyword);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String stockStatus) {
+        return productService.getAdminProductPage(page, size, categoryId, keyword, status, stockStatus);
+    }
+    
+    /**
+     * 获取商品详情
+     */
+    @GetMapping("/{id}")
+    public Result<Product> getProductById(@PathVariable Long id) {
+        return productService.getAdminProductById(id);
     }
     
     /**

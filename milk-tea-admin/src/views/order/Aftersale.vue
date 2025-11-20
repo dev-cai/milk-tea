@@ -66,7 +66,7 @@
             <el-form :model="refundQuery" :inline="true" class="search-form">
               <el-form-item label="状态">
                 <el-select v-model="refundQuery.status" placeholder="请选择状态" clearable style="width: 150px;">
-                  <el-option label="全部" value="" />
+                  <el-option label="全部" :value="null" />
                   <el-option label="待处理" :value="0" />
                   <el-option label="已同意" :value="1" />
                   <el-option label="已拒绝" :value="2" />
@@ -100,27 +100,29 @@
                   {{ formatTime(row.createTime) }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right">
+              <el-table-column label="操作" width="220" fixed="right">
                 <template #default="{ row }">
-                  <el-button
-                    v-if="row.status === 0"
-                    type="success"
-                    size="small"
-                    @click="approveRefund(row)"
-                  >
-                    同意
-                  </el-button>
-                  <el-button
-                    v-if="row.status === 0"
-                    type="danger"
-                    size="small"
-                    @click="showRejectDialog(row)"
-                  >
-                    拒绝
-                  </el-button>
-                  <el-button size="small" @click="showRefundDetail(row)">
-                    详情
-                  </el-button>
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="row.status === 0"
+                      type="success"
+                      size="small"
+                      @click="approveRefund(row)"
+                    >
+                      同意
+                    </el-button>
+                    <el-button
+                      v-if="row.status === 0"
+                      type="danger"
+                      size="small"
+                      @click="showRejectDialog(row)"
+                    >
+                      拒绝
+                    </el-button>
+                    <el-button size="small" @click="showRefundDetail(row)">
+                      详情
+                    </el-button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -145,7 +147,7 @@
             <el-form :model="complaintQuery" :inline="true" class="search-form">
               <el-form-item label="状态">
                 <el-select v-model="complaintQuery.status" placeholder="请选择状态" clearable style="width: 150px;">
-                  <el-option label="全部" value="" />
+                  <el-option label="全部" :value="null" />
                   <el-option label="待处理" :value="0" />
                   <el-option label="处理中" :value="1" />
                   <el-option label="已解决" :value="2" />
@@ -180,19 +182,21 @@
                   {{ formatTime(row.createTime) }}
                 </template>
               </el-table-column>
-              <el-table-column label="操作" width="200" fixed="right">
+              <el-table-column label="操作" width="180" fixed="right">
                 <template #default="{ row }">
-                  <el-button
-                    v-if="row.status === 0"
-                    type="primary"
-                    size="small"
-                    @click="showResponseDialog(row)"
-                  >
-                    处理
-                  </el-button>
-                  <el-button size="small" @click="showComplaintDetail(row)">
-                    详情
-                  </el-button>
+                  <div class="action-buttons">
+                    <el-button
+                      v-if="row.status === 0"
+                      type="primary"
+                      size="small"
+                      @click="showResponseDialog(row)"
+                    >
+                      处理
+                    </el-button>
+                    <el-button size="small" @click="showComplaintDetail(row)">
+                      详情
+                    </el-button>
+                  </div>
                 </template>
               </el-table-column>
             </el-table>
@@ -687,5 +691,17 @@ const getComplaintTypeName = (type) => {
   border-radius: 4px;
   max-height: 100px;
   overflow-y: auto;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 </style>

@@ -7,6 +7,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 管理端分类控制器
@@ -62,5 +63,22 @@ public class AdminCategoryController {
     @DeleteMapping("/{id}")
     public Result<String> deleteCategory(@PathVariable Long id) {
         return categoryService.deleteCategory(id);
+    }
+    
+    /**
+     * 获取分类树
+     */
+    @GetMapping("/tree")
+    public Result<List<Category>> getCategoryTree() {
+        return categoryService.getCategoryTree();
+    }
+    
+    /**
+     * 更新分类状态
+     */
+    @PutMapping("/{id}/status")
+    public Result<String> updateCategoryStatus(@PathVariable Long id, @RequestBody Map<String, Integer> request) {
+        Integer status = request.get("status");
+        return categoryService.updateCategoryStatus(id, status);
     }
 }

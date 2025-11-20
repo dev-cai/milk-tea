@@ -75,11 +75,17 @@ npm run dev:mp-weixin
 # H5
 npm run dev:h5
 
-# App
+# App (生成App调试代码)
 npm run dev:app
 
 # 支付宝小程序
 npm run dev:mp-alipay
+
+# 其他小程序平台
+npm run dev:mp-qq          # QQ小程序
+npm run dev:mp-baidu       # 百度小程序
+npm run dev:mp-toutiao     # 抖音小程序
+npm run dev:mp-harmony     # 鸿蒙小程序
 ```
 
 ### ✅ 编译成功！
@@ -96,9 +102,55 @@ npm run build:mp-weixin
 # 构建H5
 npm run build:h5
 
-# 构建App
+# 构建App (生成App源码)
 npm run build:app
-\`\`\`
+
+# 构建支付宝小程序
+npm run build:mp-alipay
+
+# 构建QQ小程序
+npm run build:mp-qq
+
+# 构建百度小程序
+npm run build:mp-baidu
+
+# 构建抖音小程序
+npm run build:mp-toutiao
+
+# 构建鸿蒙小程序
+npm run build:mp-harmony
+```
+
+### 📱 App打包说明
+
+#### CLI构建App源码
+```bash
+# 开发调试 - 生成App调试代码到 dist/dev/app
+npm run dev:app
+
+# 生产构建 - 生成App源码到 dist/build/app
+npm run build:app
+```
+
+#### 最终App打包方式
+
+**方式一：HBuilderX云打包（推荐）**
+1. 使用HBuilderX打开项目
+2. 点击"发行" -> "原生App-云打包"
+3. 选择Android/iOS平台
+4. 配置签名证书
+5. 点击打包
+
+**方式二：本地打包**
+1. 安装Android Studio (Android) 或 Xcode (iOS)
+2. 运行 `npm run build:app` 生成源码
+3. 将生成的源码导入原生开发环境
+4. 配置签名和打包
+
+**方式三：离线SDK打包**
+1. 下载uni-app离线SDK
+2. 将构建的代码集成到离线SDK
+3. 使用原生开发工具打包
 
 ## 🎯 uView UI组件使用示例
 

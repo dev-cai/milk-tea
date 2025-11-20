@@ -141,32 +141,34 @@
             {{ row.lastLogin ? formatTime(row.lastLogin) : '从未登录' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewStaffDetail(row)">详情</el-button>
-            <el-button type="primary" size="small" @click="showStaffDialog(row)">编辑</el-button>
-            <el-button type="warning" size="small" @click="showPermissionDialog(row)">权限</el-button>
-            <el-dropdown trigger="click">
-              <el-button size="small">
-                更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
-              </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="resetPassword(row)">
-                    <el-icon><Refresh /></el-icon>
-                    重置密码
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="toggleStatus(row)">
-                    <el-icon><Switch /></el-icon>
-                    {{ row.status === 1 ? '离职' : '复职' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="viewOperationLog(row)">
-                    <el-icon><Document /></el-icon>
-                    操作日志
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+            <div class="action-buttons">
+              <el-button size="small" @click="viewStaffDetail(row)">详情</el-button>
+              <el-button type="primary" size="small" @click="showStaffDialog(row)">编辑</el-button>
+              <el-button type="warning" size="small" @click="showPermissionDialog(row)">权限</el-button>
+              <el-dropdown trigger="click">
+                <el-button size="small">
+                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="resetPassword(row)">
+                      <el-icon><Refresh /></el-icon>
+                      重置密码
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="toggleStatus(row)">
+                      <el-icon><Switch /></el-icon>
+                      {{ row.status === 1 ? '离职' : '复职' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="viewOperationLog(row)">
+                      <el-icon><Document /></el-icon>
+                      操作日志
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -253,13 +255,85 @@
         <el-button type="primary" @click="savePermissions">保存权限</el-button>
       </template>
     </el-dialog>
+
+    <!-- 员工详情对话框 -->
+    <el-dialog v-model="detailDialogVisible" title="员工详情" width="700px">
+      <div v-if="currentStaff">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="员工ID">{{ currentStaff.id }}</el-descriptions-item>
+          <el-descriptions-item label="员工姓名">{{ currentStaff.name }}</el-descriptions-item>
+          <el-descriptions-item label="用户名">{{ currentStaff.username }}</el-descriptions-item>
+          <el-descriptions-item label="联系电话">{{ currentStaff.phone }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{ currentStaff.email || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="角色">
+            <el-tag :type="getRoleTag(currentStaff.role)">
+              {{ getRoleName(currentStaff.role) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="状态">
+            <el-tag :type="currentStaff.status === 1 ? 'success' : 'danger'">
+              {{ currentStaff.status === 1 ? '在职' : '离职' }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="入职时间">{{ formatTime(currentStaff.hireDate) }}</el-descriptions-item>
+          <el-descriptions-item label="最后登录">
+            {{ currentStaff.lastLogin ? formatTime(currentStaff.lastLogin) : '从未登录' }}
+          </el-descriptions-item>
+          <el-descriptions-item label="创建时间">{{ formatTime(currentStaff.createTime) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 员工头像 -->
+        <div v-if="currentStaff.avatar" style="margin-top: 20px;">
+          <h4>员工头像</h4>
+          <el-avatar :src="currentStaff.avatar" :size="100">
+            <el-icon><UserFilled /></el-icon>
+          </el-avatar>
+        </div>
+
+        <!-- 工作信息 -->
+        <div style="margin-top: 20px;">
+          <h4>工作信息</h4>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="所属部门">{{ currentStaff.department || '未分配' }}</el-descriptions-item>
+            <el-descriptions-item label="直属上级">{{ currentStaff.supervisor || '无' }}</el-descriptions-item>
+            <el-descriptions-item label="工作地点">{{ currentStaff.workLocation || '总部' }}</el-descriptions-item>
+            <el-descriptions-item label="员工编号">{{ currentStaff.employeeNo || '自动生成' }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 权限信息 -->
+        <div style="margin-top: 20px;">
+          <h4>权限信息</h4>
+          <el-tag v-for="permission in currentStaff.permissions" :key="permission" style="margin-right: 8px; margin-bottom: 8px;">
+            {{ getPermissionName(permission) }}
+          </el-tag>
+          <span v-if="!currentStaff.permissions || currentStaff.permissions.length === 0" style="color: #909399;">
+            暂无特殊权限
+          </span>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="detailDialogVisible = false">关闭</el-button>
+        <el-button type="primary" @click="showStaffDialog(currentStaff)">编辑员工</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import request from '@/utils/request'
+import {
+  getStaffStats,
+  getStaffList,
+  getStaffDetail,
+  addStaff,
+  updateStaff,
+  deleteStaff,
+  toggleStaffStatus,
+  resetStaffPassword,
+  updateStaffPermissions
+} from '@/api/staff'
 
 // 数据定义
 const loading = ref(false)
@@ -286,6 +360,7 @@ const queryForm = reactive({
 // 对话框状态
 const staffDialogVisible = ref(false)
 const permissionDialogVisible = ref(false)
+const detailDialogVisible = ref(false)
 
 const currentStaff = ref(null)
 const staffPermissions = ref([])
@@ -383,15 +458,13 @@ const loadData = async () => {
 // 加载员工统计
 const loadStaffStats = async () => {
   try {
-    // 模拟数据
-    Object.assign(staffStats, {
-      total: 25,
-      active: 22,
-      managers: 3,
-      onDuty: 18
-    })
+    const res = await getStaffStats()
+    if (res.code === 200) {
+      Object.assign(staffStats, res.data)
+    }
   } catch (error) {
     console.error('加载员工统计失败:', error)
+    ElMessage.error('加载员工统计失败')
   }
 }
 
@@ -399,40 +472,14 @@ const loadStaffStats = async () => {
 const handleQuery = async () => {
   loading.value = true
   try {
-    // 模拟数据
-    staffList.value = [
-      {
-        id: 1,
-        name: '张三',
-        phone: '13800138001',
-        employeeId: 'EMP001',
-        role: 'manager',
-        department: 'management',
-        hireDate: '2023-01-15',
-        salary: 8000,
-        email: 'zhangsan@example.com',
-        address: '北京市朝阳区',
-        status: 1,
-        lastLogin: new Date().toISOString()
-      },
-      {
-        id: 2,
-        name: '李四',
-        phone: '13800138002',
-        employeeId: 'EMP002',
-        role: 'cashier',
-        department: 'front',
-        hireDate: '2023-03-20',
-        salary: 5000,
-        email: 'lisi@example.com',
-        address: '北京市海淀区',
-        status: 1,
-        lastLogin: new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString()
-      }
-    ]
-    total.value = 25
+    const res = await getStaffList(queryForm)
+    if (res.code === 200) {
+      staffList.value = res.data.records
+      total.value = res.data.total
+    }
   } catch (error) {
     console.error('查询失败:', error)
+    ElMessage.error('查询员工列表失败')
   } finally {
     loading.value = false
   }
@@ -476,38 +523,77 @@ const saveStaff = async () => {
   try {
     await staffFormRef.value.validate()
     
-    if (staffForm.id) {
-      ElMessage.success('员工信息更新成功')
-    } else {
-      ElMessage.success('员工添加成功')
-    }
+    const apiFunc = staffForm.id ? updateStaff : addStaff
+    const res = await apiFunc(staffForm)
     
-    staffDialogVisible.value = false
-    handleQuery()
-    loadStaffStats()
+    if (res.code === 200) {
+      ElMessage.success(res.msg || (staffForm.id ? '员工信息更新成功' : '员工添加成功'))
+      staffDialogVisible.value = false
+      handleQuery()
+      loadStaffStats()
+    } else {
+      ElMessage.error(res.msg || '操作失败')
+    }
   } catch (error) {
     console.error('保存员工失败:', error)
+    ElMessage.error('保存员工失败')
   }
 }
 
 // 查看员工详情
-const viewStaffDetail = (staff) => {
-  ElMessage.info(`查看员工 ${staff.name} 的详细信息`)
+const viewStaffDetail = async (staff) => {
+  try {
+    const res = await getStaffDetail(staff.id)
+    if (res.code === 200) {
+      currentStaff.value = {
+        ...res.data,
+        permissions: res.data.permissions ? JSON.parse(res.data.permissions) : []
+      }
+      detailDialogVisible.value = true
+    } else {
+      ElMessage.error(res.msg || '获取员工详情失败')
+    }
+  } catch (error) {
+    console.error('获取员工详情失败:', error)
+    ElMessage.error('获取员工详情失败')
+  }
 }
 
 // 显示权限对话框
-const showPermissionDialog = (staff) => {
-  currentStaff.value = staff
-  // 模拟获取员工权限
-  staffPermissions.value = ['dashboard.view', 'product.view', 'order.view']
-  permissionDialogVisible.value = true
+const showPermissionDialog = async (staff) => {
+  try {
+    const res = await getStaffDetail(staff.id)
+    if (res.code === 200) {
+      currentStaff.value = res.data
+      staffPermissions.value = res.data.permissions ? JSON.parse(res.data.permissions) : []
+      permissionDialogVisible.value = true
+    } else {
+      ElMessage.error(res.msg || '获取员工权限失败')
+    }
+  } catch (error) {
+    console.error('获取员工权限失败:', error)
+    ElMessage.error('获取员工权限失败')
+  }
 }
 
 // 保存权限
-const savePermissions = () => {
-  const checkedKeys = permissionTreeRef.value.getCheckedKeys()
-  ElMessage.success('权限保存成功')
-  permissionDialogVisible.value = false
+const savePermissions = async () => {
+  try {
+    const checkedKeys = permissionTreeRef.value.getCheckedKeys()
+    const permissions = JSON.stringify(checkedKeys)
+    
+    const res = await updateStaffPermissions(currentStaff.value.id, permissions)
+    if (res.code === 200) {
+      ElMessage.success('权限保存成功')
+      permissionDialogVisible.value = false
+      handleQuery()
+    } else {
+      ElMessage.error(res.msg || '权限保存失败')
+    }
+  } catch (error) {
+    console.error('保存权限失败:', error)
+    ElMessage.error('保存权限失败')
+  }
 }
 
 // 重置密码
@@ -519,10 +605,16 @@ const resetPassword = async (staff) => {
       type: 'warning'
     })
     
-    ElMessage.success('密码重置成功，新密码已发送到员工手机')
+    const res = await resetStaffPassword(staff.id)
+    if (res.code === 200) {
+      ElMessage.success(res.msg || '密码重置成功，新密码为：123456')
+    } else {
+      ElMessage.error(res.msg || '密码重置失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('重置密码失败:', error)
+      ElMessage.error('重置密码失败')
     }
   }
 }
@@ -537,19 +629,48 @@ const toggleStatus = async (staff) => {
       type: 'warning'
     })
     
-    ElMessage.success(`${action}操作成功`)
-    handleQuery()
-    loadStaffStats()
+    const res = await toggleStaffStatus(staff.id)
+    if (res.code === 200) {
+      ElMessage.success(`${action}操作成功`)
+      handleQuery()
+      loadStaffStats()
+    } else {
+      ElMessage.error(res.msg || `${action}操作失败`)
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('状态切换失败:', error)
+      ElMessage.error('状态切换失败')
     }
   }
 }
 
 // 查看操作日志
-const viewOperationLog = (staff) => {
-  ElMessage.info(`查看员工 ${staff.name} 的操作日志`)
+const viewOperationLog = async (staff) => {
+  try {
+    const res = await getStaffDetail(staff.id)
+    if (res.code === 200) {
+      const staffData = res.data
+      ElMessageBox.alert(
+        `<div style="line-height: 1.8;">
+          <p><strong>员工姓名：</strong>${staffData.name}</p>
+          <p><strong>工号：</strong>${staffData.employeeId}</p>
+          <p><strong>最后登录：</strong>${staffData.lastLogin ? formatTime(staffData.lastLogin) : '从未登录'}</p>
+          <p><strong>创建时间：</strong>${formatTime(staffData.createTime)}</p>
+          <p><strong>更新时间：</strong>${formatTime(staffData.updateTime)}</p>
+          <p style="color: #909399; margin-top: 10px;">注：详细操作日志功能可在后续版本中扩展</p>
+        </div>`,
+        `${staff.name} 的操作记录`,
+        {
+          dangerouslyUseHTMLString: true,
+          confirmButtonText: '关闭'
+        }
+      )
+    }
+  } catch (error) {
+    console.error('查看操作日志失败:', error)
+    ElMessage.error('查看操作日志失败')
+  }
 }
 
 // 导出员工
@@ -584,6 +705,24 @@ const getRoleTag = (role) => {
     maker: 'success'
   }
   return tagMap[role] || 'info'
+}
+
+const getPermissionName = (permission) => {
+  const permissionMap = {
+    'dashboard.view': '仪表盘查看',
+    'product.view': '商品查看',
+    'product.edit': '商品编辑',
+    'order.view': '订单查看',
+    'order.edit': '订单处理',
+    'user.view': '用户查看',
+    'user.edit': '用户管理',
+    'system.view': '系统查看',
+    'system.edit': '系统管理',
+    'report.view': '报表查看',
+    'marketing.view': '营销查看',
+    'marketing.edit': '营销管理'
+  }
+  return permissionMap[permission] || permission
 }
 </script>
 
@@ -653,6 +792,10 @@ const getRoleTag = (role) => {
   gap: 12px;
 }
 
+.staff-avatar {
+  flex-shrink: 0;
+}
+
 .staff-details {
   flex: 1;
 }
@@ -662,8 +805,20 @@ const getRoleTag = (role) => {
   margin-bottom: 4px;
 }
 
-.staff-phone {
+.staff-username {
   font-size: 12px;
   color: #909399;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 </style>

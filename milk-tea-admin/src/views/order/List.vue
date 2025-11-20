@@ -16,7 +16,7 @@
         </el-form-item>
         <el-form-item label="订单状态">
           <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
-            <el-option label="全部" value="" />
+            <el-option label="全部" :value="null" />
             <el-option label="待支付" :value="0" />
             <el-option label="待制作" :value="1" />
             <el-option label="制作中" :value="2" />
@@ -72,33 +72,35 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="下单时间" width="180" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleView(row)">查看</el-button>
-            <el-button 
-              type="success" 
-              size="small" 
-              v-if="row.status === 1"
-              @click="handleAccept(row)"
-            >
-              接单
-            </el-button>
-            <el-button 
-              type="warning" 
-              size="small" 
-              v-if="row.status === 2"
-              @click="handleComplete(row)"
-            >
-              完成
-            </el-button>
-            <el-button 
-              type="info" 
-              size="small" 
-              v-if="row.status === 6"
-              @click="handleRefund(row)"
-            >
-              处理退款
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" @click="handleView(row)">查看</el-button>
+              <el-button 
+                type="success" 
+                size="small" 
+                v-if="row.status === 1"
+                @click="handleAccept(row)"
+              >
+                接单
+              </el-button>
+              <el-button 
+                type="warning" 
+                size="small" 
+                v-if="row.status === 2"
+                @click="handleComplete(row)"
+              >
+                完成
+              </el-button>
+              <el-button 
+                type="info" 
+                size="small" 
+                v-if="row.status === 6"
+                @click="handleRefund(row)"
+              >
+                处理退款
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -387,5 +389,17 @@ onMounted(() => {
   display: flex;
   justify-content: space-between;
   align-items: center;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 </style>

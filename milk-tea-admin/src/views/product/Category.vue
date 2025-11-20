@@ -40,17 +40,19 @@
           </template>
         </el-table-column>
         <el-table-column prop="createTime" label="创建时间" width="180" />
-        <el-table-column label="操作" width="250" fixed="right">
+        <el-table-column label="操作" width="280" fixed="right">
           <template #default="{ row }">
-            <el-button type="primary" size="small" @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button type="success" size="small" @click="handleAddChild(row)" v-if="row.parentId === 0">
-              添加子分类
-            </el-button>
-            <el-button type="danger" size="small" @click="handleDelete(row)">
-              删除
-            </el-button>
+            <div class="action-buttons">
+              <el-button type="primary" size="small" @click="handleEdit(row)">
+                编辑
+              </el-button>
+              <el-button type="success" size="small" @click="handleAddChild(row)" v-if="row.parentId === 0">
+                添加子分类
+              </el-button>
+              <el-button type="danger" size="small" @click="handleDelete(row)">
+                删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -286,6 +288,18 @@ const resetForm = () => {
     display: flex;
     justify-content: space-between;
     align-items: center;
+  }
+
+  .action-buttons {
+    display: flex;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons .el-button {
+    margin: 0;
   }
 }
 </style>

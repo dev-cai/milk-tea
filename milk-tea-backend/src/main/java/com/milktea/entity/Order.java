@@ -27,6 +27,10 @@ public class Order {
     
     private BigDecimal payAmount;
     
+    private BigDecimal actualAmount;
+    
+    private String username;
+    
     private Integer status; // 0:待支付 1:待制作 2:制作中 3:待取餐 4:已完成 5:已取消 6:申请退款 7:已退款
     
     private Integer payType; // 1:微信支付 2:余额支付 3:组合支付

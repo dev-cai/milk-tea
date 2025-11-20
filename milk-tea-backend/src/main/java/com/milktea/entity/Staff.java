@@ -2,7 +2,9 @@ package com.milktea.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.math.BigDecimal;
 
 /**
  * 员工实体类
@@ -35,9 +37,44 @@ public class Staff {
     private String phone;
     
     /**
-     * 角色：1-管理员，2-经理，3-员工
+     * 邮箱
      */
-    private Integer role;
+    private String email;
+    
+    /**
+     * 头像
+     */
+    private String avatar;
+    
+    /**
+     * 工号
+     */
+    private String employeeId;
+    
+    /**
+     * 角色：super_admin-超级管理员，manager-店长，cashier-收银员，maker-制作员
+     */
+    private String role;
+    
+    /**
+     * 部门：management-管理部，front-前台部，kitchen-制作部，delivery-配送部
+     */
+    private String department;
+    
+    /**
+     * 入职时间
+     */
+    private LocalDate hireDate;
+    
+    /**
+     * 薪资
+     */
+    private BigDecimal salary;
+    
+    /**
+     * 地址
+     */
+    private String address;
     
     /**
      * 权限（JSON格式）
@@ -45,14 +82,14 @@ public class Staff {
     private String permissions;
     
     /**
-     * 状态：0-禁用，1-正常
+     * 状态：0-离职，1-在职
      */
     private Integer status;
     
     /**
      * 最后登录时间
      */
-    private LocalDateTime lastLoginTime;
+    private LocalDateTime lastLogin;
     
     /**
      * 删除标识：0-未删除，1-已删除

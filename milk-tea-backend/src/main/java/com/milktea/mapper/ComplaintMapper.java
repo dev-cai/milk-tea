@@ -1,12 +1,13 @@
 package com.milktea.mapper;
 
 import com.baomidou.mybatisplus.core.mapper.BaseMapper;
-import com.milktea.entity.OperationLog;
+import com.milktea.entity.Complaint;
 import org.apache.ibatis.annotations.Mapper;
 
 /**
- * 操作日志Mapper接口
+ * 投诉Mapper
+ * @author MilkTea Team
  */
 @Mapper
-public interface OperationLogMapper extends BaseMapper<OperationLog> {
+public interface ComplaintMapper extends BaseMapper<Complaint> {
 }

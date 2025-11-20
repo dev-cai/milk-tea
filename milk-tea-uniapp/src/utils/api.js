@@ -62,10 +62,11 @@ const responseInterceptor = (response, options) => {
 	}
 	
 	if (data.code !== 200) {
-		uni.showToast({
-			title: data.message || '请求失败',
-			icon: 'none'
-		})
+		// 不在这里显示toast，让调用方自己处理
+		// uni.showToast({
+		// 	title: data.msg || data.message || '请求失败',
+		// 	icon: 'none'
+		// })
 		return Promise.reject(data)
 	}
 	
@@ -134,6 +135,13 @@ const api = {
 			data
 		}),
 		
+		// 手机号+验证码登录
+		phoneLogin: (data) => request({
+			url: '/auth/phone-login',
+			method: 'POST',
+			data
+		}),
+		
 		// 注册
 		register: (data) => request({
 			url: '/auth/register',
@@ -166,8 +174,9 @@ const api = {
 	user: {
 		// 获取用户信息
 		getInfo: (userId) => request({
-			url: `/user/info?userId=${userId}`,
-			method: 'GET'
+			url: `/user/info`,
+			method: 'GET',
+			data: { userId }
 		}),
 		
 		// 更新用户信息
@@ -179,8 +188,9 @@ const api = {
 		
 		// 获取用户地址列表
 		getAddresses: (userId) => request({
-			url: `/user/addresses?userId=${userId}`,
-			method: 'GET'
+			url: `/user/addresses`,
+			method: 'GET',
+			data: { userId }
 		}),
 		
 		// 添加地址

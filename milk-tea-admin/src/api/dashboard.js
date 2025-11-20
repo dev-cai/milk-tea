@@ -34,3 +34,19 @@ export function getUserGrowth(params) {
     params
   })
 }
+
+// 获取预警信息
+export function getAlerts() {
+  return request({
+    url: '/admin/dashboard/alerts',
+    method: 'get'
+  })
+}
+
+// 获取订单状态分布
+export function getOrderStatus() {
+  return request({
+    url: '/admin/dashboard/order-status',
+    method: 'get'
+  })
+}

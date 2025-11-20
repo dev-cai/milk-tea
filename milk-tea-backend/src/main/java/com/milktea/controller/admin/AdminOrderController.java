@@ -191,4 +191,16 @@ public class AdminOrderController {
     public Result<Map<String, Object>> getAftersaleStatistics() {
         return adminService.getAftersaleStatistics();
     }
+    
+    /**
+     * 导出订单数据
+     */
+    @GetMapping("/export")
+    public Result<String> exportOrders(
+            @RequestParam(required = false) Integer status,
+            @RequestParam(required = false) String orderNo,
+            @RequestParam(required = false) String startDate,
+            @RequestParam(required = false) String endDate) {
+        return adminService.exportOrders(status, orderNo, startDate, endDate);
+    }
 }

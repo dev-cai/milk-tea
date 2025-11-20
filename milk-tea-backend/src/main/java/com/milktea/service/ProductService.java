@@ -34,13 +34,14 @@ public class ProductService {
     }
     
     /**
-     * 分页查询商品
+     * 分页查询商品（用户端）
      */
     public Result<PageResult<Product>> getProductPage(Integer page, Integer size, Long categoryId, String keyword) {
         Page<Product> pageObj = new Page<>(page, size);
         
         LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
-        queryWrapper.eq(Product::getStatus, 1); // 只查询上架商品
+        queryWrapper.eq(Product::getStatus, 1) // 只查询上架商品
+                   .eq(Product::getDeleted, 0);
         
         if (categoryId != null) {
             queryWrapper.eq(Product::getCategoryId, categoryId);
@@ -68,7 +69,74 @@ public class ProductService {
     }
     
     /**
-     * 获取商品详情
+     * 分页查询商品（管理端）
+     */
+    public Result<PageResult<Product>> getAdminProductPage(Integer page, Integer size, Long categoryId, String keyword, Integer status, String stockStatus) {
+        Page<Product> pageObj = new Page<>(page, size);
+        
+        LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
+        queryWrapper.eq(Product::getDeleted, 0); // 只查询未删除的商品
+        
+        if (categoryId != null) {
+            queryWrapper.eq(Product::getCategoryId, categoryId);
+        }
+        
+        if (status != null) {
+            queryWrapper.eq(Product::getStatus, status);
+        }
+        
+        // 处理库存状态筛选
+        if (StringUtils.hasText(stockStatus)) {
+            switch (stockStatus) {
+                case "zero":
+                    // 零库存
+                    queryWrapper.eq(Product::getStock, 0);
+                    break;
+                case "low":
+                    // 库存不足（1-10）
+                    queryWrapper.gt(Product::getStock, 0)
+                               .le(Product::getStock, 10);
+                    break;
+                case "sufficient":
+                    // 库存充足（>50）
+                    queryWrapper.gt(Product::getStock, 50);
+                    break;
+            }
+        }
+        
+        if (StringUtils.hasText(keyword)) {
+            queryWrapper.like(Product::getName, keyword)
+                       .or()
+                       .like(Product::getDescription, keyword);
+        }
+        
+        queryWrapper.orderByDesc(Product::getSort)
+                   .orderByDesc(Product::getCreateTime);
+        
+        Page<Product> result = productMapper.selectPage(pageObj, queryWrapper);
+        
+        // 为每个商品添加分类名称
+        for (Product product : result.getRecords()) {
+            if (product.getCategoryId() != null) {
+                Category category = categoryMapper.selectById(product.getCategoryId());
+                if (category != null) {
+                    product.setCategoryName(category.getName());
+                }
+            }
+        }
+        
+        PageResult<Product> pageResult = new PageResult<>(
+            result.getRecords(),
+            result.getTotal(),
+            result.getCurrent(),
+            result.getSize()
+        );
+        
+        return Result.success("查询成功", pageResult);
+    }
+    
+    /**
+     * 获取商品详情（用户端）
      */
     public Result<Product> getProductById(Long id) {
         Product product = productMapper.selectById(id);
@@ -76,6 +144,31 @@ public class ProductService {
             throw new BusinessException("商品不存在或已下架");
         }
         return Result.success("获取成功", product);
+    }
+    
+    /**
+     * 获取商品详情（管理端）
+     */
+    public Result<Product> getAdminProductById(Long id) {
+        try {
+            Product product = productMapper.selectById(id);
+            if (product == null || product.getDeleted() == 1) {
+                throw new BusinessException("商品不存在");
+            }
+            
+            // 添加分类名称
+            if (product.getCategoryId() != null) {
+                Category category = categoryMapper.selectById(product.getCategoryId());
+                if (category != null) {
+                    product.setCategoryName(category.getName());
+                }
+            }
+            
+            return Result.success("获取成功", product);
+        } catch (Exception e) {
+            log.error("获取商品详情失败", e);
+            return Result.error("获取商品详情失败");
+        }
     }
     
     /**

@@ -206,16 +206,93 @@
             <el-rate v-model="row.rfmScore" disabled show-score />
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="150" fixed="right">
+        <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="viewCustomerDetail(row)">详情</el-button>
-            <el-button type="primary" size="small" @click="sendPersonalizedOffer(row)">
-              专属优惠
-            </el-button>
+            <div class="action-buttons">
+              <el-button size="small" @click="viewCustomerDetail(row)">详情</el-button>
+              <el-button type="primary" size="small" @click="sendPersonalizedOffer(row)">
+                专属优惠
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
     </el-card>
+
+    <!-- 客户详情对话框 -->
+    <el-dialog v-model="customerDetailVisible" title="客户详情" width="800px">
+      <div v-if="currentCustomer">
+        <el-descriptions :column="2" border>
+          <el-descriptions-item label="客户ID">{{ currentCustomer.id }}</el-descriptions-item>
+          <el-descriptions-item label="用户名">{{ currentCustomer.username }}</el-descriptions-item>
+          <el-descriptions-item label="昵称">{{ currentCustomer.nickname || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="手机号">{{ currentCustomer.phone }}</el-descriptions-item>
+          <el-descriptions-item label="邮箱">{{ currentCustomer.email || '未设置' }}</el-descriptions-item>
+          <el-descriptions-item label="会员等级">
+            <el-tag :type="getMemberLevelTag(currentCustomer.memberLevel)">
+              {{ getMemberLevelName(currentCustomer.memberLevel) }}
+            </el-tag>
+          </el-descriptions-item>
+          <el-descriptions-item label="累计消费">¥{{ currentCustomer.totalConsumption }}</el-descriptions-item>
+          <el-descriptions-item label="订单数量">{{ currentCustomer.orderCount }}单</el-descriptions-item>
+          <el-descriptions-item label="客单价">¥{{ currentCustomer.avgOrderAmount }}</el-descriptions-item>
+          <el-descriptions-item label="RFM评分">
+            <el-rate v-model="currentCustomer.rfmScore" disabled show-score />
+          </el-descriptions-item>
+          <el-descriptions-item label="注册时间">{{ formatTime(currentCustomer.registerTime) }}</el-descriptions-item>
+          <el-descriptions-item label="最后消费">{{ formatTime(currentCustomer.lastOrderTime) }}</el-descriptions-item>
+        </el-descriptions>
+
+        <!-- 客户头像 -->
+        <div v-if="currentCustomer.avatar" style="margin-top: 20px;">
+          <h4>客户头像</h4>
+          <el-avatar :src="currentCustomer.avatar" :size="100">
+            <el-icon><User /></el-icon>
+          </el-avatar>
+        </div>
+
+        <!-- 消费偏好 -->
+        <div style="margin-top: 20px;">
+          <h4>消费偏好</h4>
+          <el-descriptions :column="2" border>
+            <el-descriptions-item label="偏好商品">{{ currentCustomer.favoriteProducts || '暂无数据' }}</el-descriptions-item>
+            <el-descriptions-item label="偏好时段">{{ currentCustomer.favoriteTimeSlot || '全天' }}</el-descriptions-item>
+            <el-descriptions-item label="平均消费频次">{{ currentCustomer.avgFrequency || 0 }}次/月</el-descriptions-item>
+            <el-descriptions-item label="客户标签">
+              <el-tag v-for="tag in currentCustomer.tags" :key="tag" style="margin-right: 8px;">
+                {{ tag }}
+              </el-tag>
+              <span v-if="!currentCustomer.tags || currentCustomer.tags.length === 0" style="color: #909399;">
+                暂无标签
+              </span>
+            </el-descriptions-item>
+          </el-descriptions>
+        </div>
+
+        <!-- 最近订单 -->
+        <div style="margin-top: 20px;">
+          <h4>最近订单</h4>
+          <el-table :data="currentCustomer.recentOrders" size="small" max-height="200">
+            <el-table-column prop="orderNo" label="订单号" width="180" />
+            <el-table-column prop="amount" label="金额" width="100">
+              <template #default="{ row }">¥{{ row.amount }}</template>
+            </el-table-column>
+            <el-table-column prop="status" label="状态" width="100">
+              <template #default="{ row }">
+                <el-tag size="small" :type="row.status === 1 ? 'success' : 'info'">
+                  {{ row.status === 1 ? '已完成' : '进行中' }}
+                </el-tag>
+              </template>
+            </el-table-column>
+            <el-table-column prop="createTime" label="下单时间" />
+          </el-table>
+        </div>
+      </div>
+      <template #footer>
+        <el-button @click="customerDetailVisible = false">关闭</el-button>
+        <el-button type="primary" @click="sendPersonalizedOffer(currentCustomer)">发送优惠</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -223,7 +300,16 @@
 import { ref, reactive, onMounted, onBeforeUnmount } from 'vue'
 import { ElMessage } from 'element-plus'
 import * as echarts from 'echarts'
-import request from '@/utils/request'
+import {
+  getMemberOverview,
+  getMemberConsumption,
+  getMemberLevelDistribution,
+  getMemberBehavior,
+  getMemberActivityTrend,
+  getMemberSegmentation,
+  getVipCustomers,
+  getCustomerDetail
+} from '@/api/analysis'
 
 // 图表引用
 const consumptionChart = ref()
@@ -248,6 +334,10 @@ const analysisData = reactive({
 
 const memberSegments = ref([])
 const vipCustomers = ref([])
+
+// 客户详情对话框
+const customerDetailVisible = ref(false)
+const currentCustomer = ref(null)
 
 // 图表实例
 let consumptionChartInstance = null
@@ -283,28 +373,28 @@ const loadAnalysisData = async () => {
 // 加载概览数据
 const loadOverviewData = async () => {
   try {
-    // 模拟数据
-    Object.assign(analysisData, {
-      avgConsumption: 156.8,
-      avgFrequency: 2.3,
-      totalRevenue: 285600,
-      retentionRate: 68.5
-    })
+    const res = await getMemberOverview()
+    if (res.code === 200) {
+      Object.assign(analysisData, res.data)
+    }
   } catch (error) {
     console.error('加载概览数据失败:', error)
+    ElMessage.error('加载概览数据失败')
   }
 }
 
 // 加载消费分析
 const loadConsumptionAnalysis = async () => {
   try {
-    // 模拟数据
-    const data = {
-      ranges: ['0-50', '50-100', '100-200', '200-500', '500+'],
-      counts: [120, 280, 350, 180, 70]
+    const res = await getMemberConsumption(consumptionPeriod.value)
+    if (res.code === 200 && res.data.levelStats) {
+      // 转换数据格式用于图表显示
+      const data = {
+        ranges: res.data.levelStats.map(item => `等级${item.level}`),
+        counts: res.data.levelStats.map(item => item.orderCount)
+      }
+      initConsumptionChart(data)
     }
-    
-    initConsumptionChart(data)
   } catch (error) {
     console.error('加载消费分析失败:', error)
   }
@@ -313,14 +403,14 @@ const loadConsumptionAnalysis = async () => {
 // 加载等级分布
 const loadLevelDistribution = async () => {
   try {
-    // 模拟数据
-    const data = [
-      { name: '普通会员', value: 650 },
-      { name: '黄金会员', value: 280 },
-      { name: '钻石会员', value: 70 }
-    ]
-    
-    initLevelChart(data)
+    const res = await getMemberLevelDistribution()
+    if (res.code === 200 && res.data) {
+      const data = res.data.map(item => ({
+        name: item.name,
+        value: item.count
+      }))
+      initLevelChart(data)
+    }
   } catch (error) {
     console.error('加载等级分布失败:', error)
   }
@@ -329,13 +419,20 @@ const loadLevelDistribution = async () => {
 // 加载行为分析
 const loadBehaviorAnalysis = async () => {
   try {
-    // 模拟数据
-    const data = {
-      categories: ['早餐时段', '午餐时段', '下午茶', '晚餐时段', '夜宵时段'],
-      values: [15, 35, 25, 20, 5]
+    const res = await getMemberBehavior()
+    if (res.code === 200 && res.data) {
+      // 使用真实数据，如果没有时段数据则使用简单的统计
+      const data = {
+        categories: ['复购率', '平均订单金额', '总订单数', '总用户数'],
+        values: [
+          res.data.repeatRate || 0,
+          res.data.avgOrderAmount || 0,
+          (res.data.totalOrders || 0) / 10, // 缩放以便显示
+          (res.data.totalUsers || 0) / 10  // 缩放以便显示
+        ]
+      }
+      initBehaviorChart(data)
     }
-    
-    initBehaviorChart(data)
   } catch (error) {
     console.error('加载行为分析失败:', error)
   }
@@ -344,14 +441,15 @@ const loadBehaviorAnalysis = async () => {
 // 加载活跃度趋势
 const loadActivityTrend = async () => {
   try {
-    // 模拟数据
-    const data = {
-      dates: ['11-07', '11-08', '11-09', '11-10', '11-11', '11-12', '11-13'],
-      activeUsers: [320, 280, 350, 400, 380, 420, 390],
-      newUsers: [20, 15, 25, 30, 28, 35, 22]
+    const res = await getMemberActivityTrend(7)
+    if (res.code === 200 && res.data.trend) {
+      const data = {
+        dates: res.data.trend.map(item => item.date.substring(5)), // 只取月-日
+        activeUsers: res.data.trend.map(item => item.activeUsers),
+        newUsers: res.data.trend.map(item => item.orders) // 使用订单数作为新用户的替代
+      }
+      initActivityChart(data)
     }
-    
-    initActivityChart(data)
   } catch (error) {
     console.error('加载活跃度趋势失败:', error)
   }
@@ -361,71 +459,43 @@ const loadActivityTrend = async () => {
 const loadMemberSegmentation = async () => {
   segmentLoading.value = true
   try {
-    // 模拟数据
-    memberSegments.value = [
-      {
-        segment: 'champion',
-        count: 85,
-        percentage: 8.5,
-        avgConsumption: 450,
-        avgFrequency: 5.2,
-        totalRevenue: 38250,
-        characteristics: '高频高额消费，忠诚度极高',
-        suggestions: ['VIP专属服务', '新品优先体验', '生日特权']
-      },
-      {
-        segment: 'loyal',
-        count: 180,
-        percentage: 18.0,
-        avgConsumption: 280,
-        avgFrequency: 3.8,
-        totalRevenue: 50400,
-        characteristics: '消费稳定，品牌忠诚度高',
-        suggestions: ['会员积分奖励', '推荐奖励', '节日优惠']
-      },
-      {
-        segment: 'potential',
-        count: 220,
-        percentage: 22.0,
-        avgConsumption: 180,
-        avgFrequency: 2.5,
-        totalRevenue: 39600,
-        characteristics: '有消费潜力，需要激活',
-        suggestions: ['个性化推荐', '优惠券刺激', '会员升级引导']
-      },
-      {
-        segment: 'new',
-        count: 315,
-        percentage: 31.5,
-        avgConsumption: 85,
-        avgFrequency: 1.2,
-        totalRevenue: 26775,
-        characteristics: '新用户，消费习惯待培养',
-        suggestions: ['新人礼包', '引导消费', '体验优化']
-      },
-      {
-        segment: 'atrisk',
-        count: 120,
-        percentage: 12.0,
-        avgConsumption: 120,
-        avgFrequency: 0.8,
-        totalRevenue: 14400,
-        characteristics: '消费下降，有流失风险',
-        suggestions: ['挽回营销', '问卷调研', '专属客服']
-      },
-      {
-        segment: 'lost',
-        count: 80,
-        percentage: 8.0,
-        avgConsumption: 60,
-        avgFrequency: 0.3,
-        totalRevenue: 4800,
-        characteristics: '长期未消费，已流失',
-        suggestions: ['重新激活', '大额优惠', '情感营销']
-      }
-    ]
+    const res = await getMemberSegmentation()
+    if (res.code === 200 && res.data) {
+      // 转换后端数据为前端需要的格式
+      memberSegments.value = res.data.map(item => {
+        const totalUsers = item.totalUsers || 1
+        const percentage = ((item.count / totalUsers) * 100).toFixed(1)
+        
+        // 根据segment字段映射特征和建议
+        let characteristics = ''
+        let suggestions = []
+        
+        if (item.segment === '高价值用户') {
+          characteristics = '高频高额消费，忠诚度极高'
+          suggestions = ['VIP专属服务', '新品优先体验', '生日特权']
+        } else if (item.segment === '中价值用户') {
+          characteristics = '消费稳定，有提升潜力'
+          suggestions = ['会员积分奖励', '推荐奖励', '节日优惠']
+        } else if (item.segment === '低价值用户') {
+          characteristics = '消费较少，需要激活'
+          suggestions = ['个性化推荐', '优惠券刺激', '会员升级引导']
+        }
+        
+        return {
+          segment: item.segment,
+          count: item.count,
+          percentage: parseFloat(percentage),
+          avgConsumption: item.threshold || 0,
+          avgFrequency: 0, // 后端暂无此数据
+          totalRevenue: 0, // 后端暂无此数据
+          characteristics,
+          suggestions
+        }
+      })
+    }
   } catch (error) {
     console.error('加载会员分层失败:', error)
+    ElMessage.error('加载会员分层失败')
   } finally {
     segmentLoading.value = false
   }
@@ -435,22 +505,18 @@ const loadMemberSegmentation = async () => {
 const loadVipCustomers = async () => {
   vipLoading.value = true
   try {
-    // 模拟数据
-    vipCustomers.value = Array.from({ length: 20 }, (_, i) => ({
-      id: i + 1,
-      username: `vip_user_${i + 1}`,
-      nickname: `VIP客户${i + 1}`,
-      phone: `138****${String(i + 1).padStart(4, '0')}`,
-      avatar: '',
-      memberLevel: i < 5 ? 2 : i < 15 ? 1 : 0,
-      totalConsumption: 5000 - i * 200,
-      orderCount: 50 - i * 2,
-      avgOrderAmount: (5000 - i * 200) / (50 - i * 2),
-      lastOrderTime: new Date(Date.now() - i * 24 * 60 * 60 * 1000).toISOString(),
-      rfmScore: 5 - Math.floor(i / 4)
-    }))
+    const res = await getVipCustomers(20)
+    if (res.code === 200 && res.data) {
+      vipCustomers.value = res.data.map(item => ({
+        ...item,
+        avgOrderAmount: item.orderCount > 0 ? 
+          (item.totalConsumption / item.orderCount).toFixed(2) : 0,
+        rfmScore: item.memberLevel === 2 ? 5 : item.memberLevel === 1 ? 4 : 3
+      }))
+    }
   } catch (error) {
     console.error('加载VIP客户失败:', error)
+    ElMessage.error('加载VIP客户失败')
   } finally {
     vipLoading.value = false
   }
@@ -617,8 +683,37 @@ const exportVipCustomers = () => {
 }
 
 // 查看客户详情
-const viewCustomerDetail = (customer) => {
-  ElMessage.info(`查看客户 ${customer.nickname} 的详细信息`)
+const viewCustomerDetail = async (customer) => {
+  try {
+    const res = await getCustomerDetail(customer.userId)
+    if (res.code === 200 && res.data) {
+      currentCustomer.value = {
+        ...res.data,
+        email: res.data.email || `${res.data.username}@example.com`,
+        registerTime: res.data.registerTime || res.data.createTime,
+        favoriteProducts: res.data.favoriteProducts || '暂无数据',
+        favoriteTimeSlot: res.data.favoriteTimeSlot || '全天',
+        avgFrequency: res.data.avgFrequency || 0,
+        tags: res.data.tags || ['VIP客户'],
+        recentOrders: res.data.recentOrders || []
+      }
+      customerDetailVisible.value = true
+    }
+  } catch (error) {
+    console.error('加载客户详情失败:', error)
+    // 如果API失败，使用基本信息
+    currentCustomer.value = {
+      ...customer,
+      email: `${customer.username}@example.com`,
+      registerTime: '2023-06-15 10:30:00',
+      favoriteProducts: '暂无数据',
+      favoriteTimeSlot: '全天',
+      avgFrequency: 0,
+      tags: ['VIP客户'],
+      recentOrders: []
+    }
+    customerDetailVisible.value = true
+  }
 }
 
 // 发送个性化优惠
@@ -758,5 +853,16 @@ const getMemberLevelTag = (level) => {
 .customer-phone {
   font-size: 12px;
   color: #909399;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 </style>

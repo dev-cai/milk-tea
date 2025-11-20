@@ -2,6 +2,7 @@ package com.milktea.entity;
 
 import com.baomidou.mybatisplus.annotation.*;
 import lombok.Data;
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 
 /**
@@ -30,14 +31,49 @@ public class Store {
     private String phone;
     
     /**
-     * 店长
+     * 店长姓名
      */
     private String manager;
+    
+    /**
+     * 店长电话
+     */
+    private String managerPhone;
     
     /**
      * 营业时间（JSON格式）
      */
     private String businessHours;
+    
+    /**
+     * 纬度
+     */
+    private BigDecimal latitude;
+    
+    /**
+     * 经度
+     */
+    private BigDecimal longitude;
+    
+    /**
+     * 门店面积（平方米）
+     */
+    private BigDecimal area;
+    
+    /**
+     * 员工数量
+     */
+    private Integer staffCount;
+    
+    /**
+     * 门店描述
+     */
+    private String description;
+    
+    /**
+     * 门店图片（JSON格式）
+     */
+    private String images;
     
     /**
      * 状态：0-关闭，1-营业

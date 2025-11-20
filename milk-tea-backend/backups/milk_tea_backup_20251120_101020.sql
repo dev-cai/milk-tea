@@ -1,0 +1,3 @@
+-- MySQL dump for milk_tea database
+-- Generated at: 2025-11-20T10:10:20.566277200
+-- This is a sample backup file

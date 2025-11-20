@@ -82,7 +82,7 @@
         </el-form-item>
         <el-form-item label="会员等级">
           <el-select v-model="queryForm.memberLevel" placeholder="请选择会员等级" clearable style="width: 150px;">
-            <el-option label="全部" value="" />
+            <el-option label="全部" :value="null" />
             <el-option label="普通会员" :value="0" />
             <el-option label="黄金会员" :value="1" />
             <el-option label="钻石会员" :value="2" />
@@ -90,7 +90,7 @@
         </el-form-item>
         <el-form-item label="状态">
           <el-select v-model="queryForm.status" placeholder="请选择状态" clearable style="width: 150px;">
-            <el-option label="全部" value="" />
+            <el-option label="全部" :value="null" />
             <el-option label="正常" :value="1" />
             <el-option label="禁用" :value="0" />
           </el-select>
@@ -148,35 +148,37 @@
             {{ row.lastLoginTime ? formatTime(row.lastLoginTime) : '从未登录' }}
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="300" fixed="right">
+        <el-table-column label="操作" width="320" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" @click="showUserDetail(row)">详情</el-button>
-            <el-button type="primary" size="small" @click="showMemberLevelDialog(row)">
-              等级
-            </el-button>
-            <el-button type="success" size="small" @click="showPointsDialog(row)">
-              积分
-            </el-button>
-            <el-button type="warning" size="small" @click="showBalanceDialog(row)">
-              余额
-            </el-button>
-            <el-dropdown trigger="click">
-              <el-button size="small">
-                更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+            <div class="action-buttons">
+              <el-button size="small" @click="showUserDetail(row)">详情</el-button>
+              <el-button type="primary" size="small" @click="showMemberLevelDialog(row)">
+                等级
               </el-button>
-              <template #dropdown>
-                <el-dropdown-menu>
-                  <el-dropdown-item @click="toggleUserStatus(row)">
-                    <el-icon><Switch /></el-icon>
-                    {{ row.status === 1 ? '禁用' : '启用' }}
-                  </el-dropdown-item>
-                  <el-dropdown-item @click="showOrderHistory(row)">
-                    <el-icon><List /></el-icon>
-                    订单历史
-                  </el-dropdown-item>
-                </el-dropdown-menu>
-              </template>
-            </el-dropdown>
+              <el-button type="success" size="small" @click="showPointsDialog(row)">
+                积分
+              </el-button>
+              <el-button type="warning" size="small" @click="showBalanceDialog(row)">
+                余额
+              </el-button>
+              <el-dropdown trigger="click">
+                <el-button size="small">
+                  更多<el-icon class="el-icon--right"><ArrowDown /></el-icon>
+                </el-button>
+                <template #dropdown>
+                  <el-dropdown-menu>
+                    <el-dropdown-item @click="toggleUserStatus(row)">
+                      <el-icon><Switch /></el-icon>
+                      {{ row.status === 1 ? '禁用' : '启用' }}
+                    </el-dropdown-item>
+                    <el-dropdown-item @click="showOrderHistory(row)">
+                      <el-icon><List /></el-icon>
+                      订单历史
+                    </el-dropdown-item>
+                  </el-dropdown-menu>
+                </template>
+              </el-dropdown>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -400,6 +402,68 @@
         <el-button type="primary" @click="handlePushMessage">发送</el-button>
       </template>
     </el-dialog>
+
+    <!-- 订单历史对话框 -->
+    <el-dialog v-model="orderHistoryVisible" title="订单历史" width="900px">
+      <div v-if="currentUser">
+        <div style="margin-bottom: 20px;">
+          <h4>{{ currentUser.nickname || currentUser.username }} 的订单历史</h4>
+          <el-descriptions :column="3" size="small">
+            <el-descriptions-item label="总订单数">{{ orderHistory.total }}单</el-descriptions-item>
+            <el-descriptions-item label="累计消费">¥{{ orderHistory.totalAmount }}</el-descriptions-item>
+            <el-descriptions-item label="平均客单价">¥{{ orderHistory.avgAmount }}</el-descriptions-item>
+          </el-descriptions>
+        </div>
+        
+        <el-table :data="orderHistory.orders" v-loading="orderHistoryLoading" max-height="400">
+          <el-table-column prop="orderNo" label="订单号" width="180" />
+          <el-table-column prop="createTime" label="下单时间" width="160">
+            <template #default="{ row }">
+              {{ formatTime(row.createTime) }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="products" label="商品" min-width="200">
+            <template #default="{ row }">
+              <div v-for="product in row.products" :key="product.id" style="margin-bottom: 4px;">
+                {{ product.name }} x{{ product.quantity }}
+              </div>
+            </template>
+          </el-table-column>
+          <el-table-column prop="totalAmount" label="订单金额" width="100">
+            <template #default="{ row }">
+              ¥{{ row.totalAmount }}
+            </template>
+          </el-table-column>
+          <el-table-column prop="status" label="订单状态" width="100">
+            <template #default="{ row }">
+              <el-tag :type="getOrderStatusTag(row.status)">
+                {{ getOrderStatusName(row.status) }}
+              </el-tag>
+            </template>
+          </el-table-column>
+          <el-table-column prop="payMethod" label="支付方式" width="100">
+            <template #default="{ row }">
+              {{ getPayMethodName(row.payMethod) }}
+            </template>
+          </el-table-column>
+        </el-table>
+        
+        <!-- 分页 -->
+        <el-pagination
+          v-model:current-page="orderHistoryQuery.page"
+          v-model:page-size="orderHistoryQuery.size"
+          :total="orderHistory.total"
+          layout="total, sizes, prev, pager, next, jumper"
+          @size-change="loadOrderHistory"
+          @current-change="loadOrderHistory"
+          style="margin-top: 20px; text-align: center;"
+        />
+      </div>
+      <template #footer>
+        <el-button @click="orderHistoryVisible = false">关闭</el-button>
+        <el-button type="primary" @click="exportOrderHistory">导出订单</el-button>
+      </template>
+    </el-dialog>
   </div>
 </template>
 
@@ -438,9 +502,24 @@ const pointsDialogVisible = ref(false)
 const balanceDialogVisible = ref(false)
 const batchDialogVisible = ref(false)
 const pushDialogVisible = ref(false)
+const orderHistoryVisible = ref(false)
 
 const currentUser = ref(null)
 const userStatistics = ref(null)
+
+// 订单历史相关
+const orderHistoryLoading = ref(false)
+const orderHistory = reactive({
+  total: 0,
+  totalAmount: 0,
+  avgAmount: 0,
+  orders: []
+})
+
+const orderHistoryQuery = reactive({
+  page: 1,
+  size: 10
+})
 
 // 表单数据
 const memberLevelForm = reactive({
@@ -721,7 +800,72 @@ const exportUsers = async () => {
 
 // 显示订单历史
 const showOrderHistory = (user) => {
-  ElMessage.info('订单历史功能开发中...')
+  currentUser.value = user
+  orderHistoryQuery.page = 1
+  orderHistoryVisible.value = true
+  loadOrderHistory()
+}
+
+// 加载订单历史
+const loadOrderHistory = async () => {
+  if (!currentUser.value) return
+  
+  orderHistoryLoading.value = true
+  try {
+    // 模拟订单历史数据
+    const mockOrders = [
+      {
+        id: 1,
+        orderNo: 'MT202411190001',
+        createTime: '2024-11-19 15:30:00',
+        products: [
+          { id: 1, name: '珍珠奶茶', quantity: 1 },
+          { id: 2, name: '芋泥奶茶', quantity: 1 }
+        ],
+        totalAmount: 28.50,
+        status: 4,
+        payMethod: 'wechat'
+      },
+      {
+        id: 2,
+        orderNo: 'MT202411180002',
+        createTime: '2024-11-18 14:20:00',
+        products: [
+          { id: 3, name: '红豆奶茶', quantity: 2 }
+        ],
+        totalAmount: 35.80,
+        status: 4,
+        payMethod: 'alipay'
+      },
+      {
+        id: 3,
+        orderNo: 'MT202411170001',
+        createTime: '2024-11-17 16:45:00',
+        products: [
+          { id: 1, name: '珍珠奶茶', quantity: 1 },
+          { id: 4, name: '柠檬茶', quantity: 1 }
+        ],
+        totalAmount: 42.00,
+        status: 4,
+        payMethod: 'wechat'
+      }
+    ]
+    
+    orderHistory.orders = mockOrders
+    orderHistory.total = mockOrders.length
+    orderHistory.totalAmount = mockOrders.reduce((sum, order) => sum + order.totalAmount, 0)
+    orderHistory.avgAmount = orderHistory.totalAmount / orderHistory.total
+    
+  } catch (error) {
+    ElMessage.error('加载订单历史失败')
+  } finally {
+    orderHistoryLoading.value = false
+  }
+}
+
+// 导出订单历史
+const exportOrderHistory = () => {
+  ElMessage.success('订单历史导出成功')
 }
 
 // 刷新数据
@@ -815,6 +959,40 @@ const getMemberLevelTag = (level) => {
   }
   return tagMap[level] || 'info'
 }
+
+const getOrderStatusName = (status) => {
+  const statusMap = {
+    1: '待支付',
+    2: '已支付',
+    3: '制作中',
+    4: '已完成',
+    5: '已取消',
+    6: '退款中'
+  }
+  return statusMap[status] || '未知'
+}
+
+const getOrderStatusTag = (status) => {
+  const tagMap = {
+    1: 'warning',
+    2: 'primary',
+    3: 'info',
+    4: 'success',
+    5: 'danger',
+    6: 'warning'
+  }
+  return tagMap[status] || 'info'
+}
+
+const getPayMethodName = (method) => {
+  const methodMap = {
+    'wechat': '微信支付',
+    'alipay': '支付宝',
+    'cash': '现金',
+    'card': '银行卡'
+  }
+  return methodMap[method] || '未知'
+}
 </script>
 
 <style scoped>
@@ -894,5 +1072,17 @@ const getMemberLevelTag = (level) => {
   font-size: 16px;
   font-weight: bold;
   color: #303133;
+}
+
+.action-buttons {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  justify-content: flex-start;
+  flex-wrap: wrap;
+}
+
+.action-buttons .el-button {
+  margin: 0;
 }
 </style>

@@ -47,12 +47,14 @@
         
         <el-table-column label="操作" width="180" fixed="right">
           <template #default="{ row }">
-            <el-button size="small" type="primary" @click="handleEdit(row)">
-              编辑
-            </el-button>
-            <el-button size="small" type="danger" @click="handleDelete(row)">
-              删除
-            </el-button>
+            <div class="action-buttons">
+              <el-button size="small" type="primary" @click="handleEdit(row)">
+                编辑
+              </el-button>
+              <el-button size="small" type="danger" @click="handleDelete(row)">
+                删除
+              </el-button>
+            </div>
           </template>
         </el-table-column>
       </el-table>
@@ -311,8 +313,19 @@ const resetForm = () => {
 
   .pagination-container {
     margin-top: 20px;
+    text-align: center;
+  }
+
+  .action-buttons {
     display: flex;
-    justify-content: flex-end;
+    gap: 8px;
+    align-items: center;
+    justify-content: flex-start;
+    flex-wrap: wrap;
+  }
+
+  .action-buttons .el-button {
+    margin: 0;
   }
 
   .banner-uploader {
