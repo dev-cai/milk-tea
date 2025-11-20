@@ -15,23 +15,19 @@
 		<view class="progress-section" v-if="orderInfo.status >= 1 && orderInfo.status <= 3">
 			<view class="progress-header">
 				<text class="progress-title">制作进度</text>
-				<text class="progress-time" v-if="orderInfo.estimatedTime">预计{{ orderInfo.estimatedTime }}分钟完成</text>
 			</view>
 			<view class="progress-steps">
 				<view class="step-item" :class="{ active: orderInfo.status >= 1, completed: orderInfo.status > 1 }">
 					<view class="step-dot"></view>
 					<text class="step-text">订单确认</text>
-					<text class="step-time" v-if="orderInfo.confirmTime">{{ orderInfo.confirmTime }}</text>
 				</view>
 				<view class="step-item" :class="{ active: orderInfo.status >= 2, completed: orderInfo.status > 2 }">
 					<view class="step-dot"></view>
 					<text class="step-text">开始制作</text>
-					<text class="step-time" v-if="orderInfo.startTime">{{ orderInfo.startTime }}</text>
 				</view>
 				<view class="step-item" :class="{ active: orderInfo.status >= 3 }">
 					<view class="step-dot"></view>
 					<text class="step-text">制作完成</text>
-					<text class="step-time" v-if="orderInfo.finishTime">{{ orderInfo.finishTime }}</text>
 				</view>
 			</view>
 		</view>
@@ -172,45 +168,34 @@ export default {
 			try {
 				const res = await api.order.getDetail(this.orderId)
 				if (res.code === 200) {
-					this.orderInfo = res.data
+					// 后端返回的数据结构是 { order: {...}, items: [...] }
+					const order = res.data.order
+					const items = res.data.items || []
+					
+					// 合并订单信息和订单项
+					this.orderInfo = {
+						id: order.id,
+						orderNo: order.orderNo,
+						status: order.status,
+						createTime: order.createTime,
+						payTime: order.payTime,
+						paymentMethod: order.payType,
+						productAmount: order.totalAmount,
+						deliveryFee: 0, // 当前版本没有配送费
+						discountAmount: order.discountAmount || 0,
+						totalAmount: order.actualAmount || order.totalAmount,
+						remark: order.remark,
+						items: items
+					}
+					
+					console.log('订单详情加载成功:', this.orderInfo)
 				}
 			} catch (error) {
 				console.error('加载订单详情失败:', error)
-				// 使用模拟数据
-				this.orderInfo = {
-					id: this.orderId,
-					orderNo: 'MT1699876543210',
-					status: 2,
-					createTime: '2024-11-13 10:30:00',
-					payTime: '2024-11-13 10:31:00',
-					confirmTime: '10:31',
-					startTime: '10:35',
-					finishTime: '',
-					estimatedTime: 15,
-					paymentMethod: 1,
-					productAmount: 36.00,
-					deliveryFee: 3.00,
-					discountAmount: 5.00,
-					totalAmount: 34.00,
-					remark: '少糖少冰，谢谢',
-					deliveryAddress: {
-						name: '张三',
-						phone: '13800138000',
-						fullAddress: '广东省深圳市南山区科技园南区腾讯大厦'
-					},
-					items: [
-						{
-							id: 1,
-							productName: '珍珠奶茶',
-							productImage: '/static/product1.jpg',
-							price: 18.00,
-							quantity: 2,
-							sweetness: 2,
-							temperature: 1,
-							toppings: '珍珠'
-						}
-					]
-				}
+				uni.showToast({
+					title: '加载失败',
+					icon: 'none'
+				})
 			}
 		},
 
@@ -287,11 +272,26 @@ export default {
 
 		// 格式化商品规格
 		formatSpecs(item) {
-			const sweetness = ['无糖', '三分糖', '五分糖', '七分糖', '正常糖'][item.sweetness] || ''
-			const temperature = ['去冰', '少冰', '正常冰', '热饮'][item.temperature] || ''
-			const toppings = item.toppings && item.toppings !== '无' ? `加${item.toppings}` : ''
+			const specs = []
 			
-			return [sweetness, temperature, toppings].filter(Boolean).join(' | ')
+			// 甜度
+			if (item.sweetness !== null && item.sweetness !== undefined) {
+				const sweetnessMap = ['无糖', '三分糖', '五分糖', '七分糖', '正常糖']
+				specs.push(sweetnessMap[item.sweetness] || '')
+			}
+			
+			// 温度
+			if (item.temperature !== null && item.temperature !== undefined) {
+				const temperatureMap = ['去冰', '少冰', '正常冰', '热饮']
+				specs.push(temperatureMap[item.temperature] || '')
+			}
+			
+			// 加料
+			if (item.toppings && item.toppings !== '无' && item.toppings !== '') {
+				specs.push(`加${item.toppings}`)
+			}
+			
+			return specs.filter(Boolean).join(' | ') || '标准'
 		},
 
 		// 取消订单

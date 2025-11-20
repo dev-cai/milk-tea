@@ -180,64 +180,13 @@ export default {
 				}
 			} catch (error) {
 				console.error('加载订单列表失败:', error)
-				// 使用模拟数据
-				this.loadMockData(refresh)
+				uni.showToast({
+					title: error.message || '加载失败',
+					icon: 'none'
+				})
 			} finally {
 				this.loading = false
 			}
-		},
-
-		// 加载模拟数据
-		loadMockData(refresh) {
-			const mockOrders = [
-				{
-					id: 1,
-					orderNo: 'MT1699876543210',
-					status: 1,
-					createTime: '2024-11-13 10:30:00',
-					totalAmount: 36.00,
-					totalQuantity: 2,
-					items: [
-						{
-							id: 1,
-							productName: '珍珠奶茶',
-							productImage: '/static/product1.jpg',
-							price: 18.00,
-							quantity: 2,
-							sweetness: 3,
-							temperature: 1,
-							toppings: '珍珠'
-						}
-					]
-				},
-				{
-					id: 2,
-					orderNo: 'MT1699876543211',
-					status: 4,
-					createTime: '2024-11-12 15:20:00',
-					totalAmount: 22.00,
-					totalQuantity: 1,
-					items: [
-						{
-							id: 2,
-							productName: '芝士奶盖',
-							productImage: '/static/product2.jpg',
-							price: 22.00,
-							quantity: 1,
-							sweetness: 2,
-							temperature: 2,
-							toppings: '无'
-						}
-					]
-				}
-			]
-
-			if (refresh) {
-				this.orderList = mockOrders
-			} else {
-				this.orderList.push(...mockOrders)
-			}
-			this.hasMore = false
 		},
 
 		// 切换状态

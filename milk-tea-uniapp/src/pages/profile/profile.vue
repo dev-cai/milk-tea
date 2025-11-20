@@ -3,7 +3,7 @@
 		<!-- 头像区域 -->
 		<view class="avatar-section">
 			<view class="avatar-wrapper" @click="changeAvatar">
-				<image class="avatar" :src="userInfo.avatar || '/static/default-avatar.png'" mode="aspectFill"></image>
+				<image class="avatar" :src="userInfo.avatar || 'https://via.placeholder.com/200x200/CCCCCC/666666?text=Avatar'" mode="aspectFill"></image>
 				<view class="avatar-overlay">
 					<text class="camera-icon">📷</text>
 					<text class="change-text">更换头像</text>
@@ -20,7 +20,7 @@
 				<view class="info-item" @click="editNickname">
 					<text class="info-label">昵称</text>
 					<text class="info-value">{{ userInfo.nickname || '未设置' }}</text>
-					<text class="info-arrow">></text>
+					<text class="info-arrow">›</text>
 				</view>
 				<view class="info-item">
 					<text class="info-label">性别</text>
@@ -42,7 +42,7 @@
 				<view class="info-item" @click="editBirthday">
 					<text class="info-label">生日</text>
 					<text class="info-value">{{ userInfo.birthday || '未设置' }}</text>
-					<text class="info-arrow">></text>
+					<text class="info-arrow">›</text>
 				</view>
 			</view>
 		</view>
@@ -109,13 +109,13 @@
 					<text class="security-icon">🔒</text>
 					<text class="security-text">修改密码</text>
 					<text class="security-desc">定期更换密码保护账户安全</text>
-					<text class="security-arrow">></text>
+					<text class="security-arrow">›</text>
 				</view>
 				<view class="security-item" @click="showLoginHistory">
 					<text class="security-icon">📱</text>
 					<text class="security-text">登录记录</text>
 					<text class="security-desc">查看最近登录设备和时间</text>
-					<text class="security-arrow">></text>
+					<text class="security-arrow">›</text>
 				</view>
 			</view>
 		</view>
@@ -202,7 +202,7 @@ export default {
 				this.userInfo = {
 					id: 1,
 					nickname: '奶茶爱好者',
-					avatar: '/static/default-avatar.png',
+					avatar: 'https://via.placeholder.com/200x200/CCCCCC/666666?text=Avatar',
 					gender: 1,
 					birthday: '1990-01-01',
 					phone: '13800138000',

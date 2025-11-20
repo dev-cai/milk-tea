@@ -169,6 +169,24 @@
 				"navigationBarTextStyle": "white",
 				"backgroundColor": "#f8f9fa"
 			}
+		},
+		{
+			"path": "pages/invite/invite",
+			"style": {
+				"navigationBarTitleText": "邀请好友",
+				"navigationBarBackgroundColor": "#ff6b35",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#f8f9fa"
+			}
+		},
+		{
+			"path": "pages/recharge/recharge",
+			"style": {
+				"navigationBarTitleText": "账户充值",
+				"navigationBarBackgroundColor": "#ff6b35",
+				"navigationBarTextStyle": "white",
+				"backgroundColor": "#f8f9fa"
+			}
 		}
 	],
 	"globalStyle": {

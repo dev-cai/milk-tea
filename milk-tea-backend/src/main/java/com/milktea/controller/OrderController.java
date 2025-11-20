@@ -57,7 +57,8 @@ public class OrderController {
      * 取消订单
      */
     @PutMapping("/{id}/cancel")
-    public Result<String> cancelOrder(@PathVariable Long id, @RequestParam Long userId) {
+    public Result<String> cancelOrder(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        Long userId = Long.valueOf(request.get("userId").toString());
         return orderService.cancelOrder(id, userId);
     }
     

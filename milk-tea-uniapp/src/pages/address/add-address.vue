@@ -46,7 +46,7 @@
 							{{ selectedRegion.join(' ') }}
 						</text>
 						<text class="region-placeholder" v-else>请选择省市区</text>
-						<text class="region-arrow">></text>
+						<text class="region-arrow">›</text>
 					</view>
 				</view>
 				

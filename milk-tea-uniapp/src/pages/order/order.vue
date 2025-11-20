@@ -1,26 +1,75 @@
 <template>
 	<view class="container">
-		<!-- 收货地址 -->
-		<view class="address-section" @click="selectAddress">
-			<view class="address-content" v-if="selectedAddress">
+		<!-- 配送方式选择 -->
+		<view class="delivery-mode-section">
+			<view class="mode-tabs">
+				<view 
+					class="mode-tab" 
+					:class="{ active: deliveryMode === 'pickup' }"
+					@click="switchDeliveryMode('pickup')"
+				>
+					<text class="tab-icon">🛍️</text>
+					<text class="tab-text">到店自取</text>
+				</view>
+				<view 
+					class="mode-tab" 
+					:class="{ active: deliveryMode === 'delivery' }"
+					@click="switchDeliveryMode('delivery')"
+				>
+					<text class="tab-icon">🚚</text>
+					<text class="tab-text">外卖配送</text>
+				</view>
+			</view>
+		</view>
+
+		<!-- 店铺信息 - 自取和配送都显示 -->
+		<view class="store-section" @click="selectStore">
+			<view class="section-title">
+				<text class="title-icon">🏪</text>
+				<text class="title-text">店铺信息</text>
+			</view>
+			<view class="store-header">
+				<view class="store-icon">🏪</view>
+				<view class="store-info">
+					<text class="store-name">{{ selectedStore.name }}</text>
+					<text class="store-address">{{ selectedStore.address }}</text>
+					<text class="store-distance">距离您 {{ selectedStore.distance }}</text>
+				</view>
+			</view>
+			<!-- 自取模式显示电话和导航 -->
+			<view class="store-actions" v-if="deliveryMode === 'pickup'">
+				<view class="store-action" @click.stop="callStore">
+					<text class="action-icon">📞</text>
+					<text class="action-text">电话</text>
+				</view>
+				<view class="store-action" @click.stop="navigateToStore">
+					<text class="action-icon">🧭</text>
+					<text class="action-text">导航</text>
+				</view>
+			</view>
+			<text class="change-store-hint">点击切换店铺</text>
+		</view>
+
+		<!-- 配送地址 - 仅配送模式显示 -->
+		<view class="address-section" v-if="deliveryMode === 'delivery'" @click="selectAddress">
+			<view class="section-title">
+				<text class="title-icon">📍</text>
+				<text class="title-text">配送地址</text>
+			</view>
+			<view class="address-card" v-if="selectedAddress">
 				<view class="address-header">
-					<text class="address-icon">📍</text>
-					<text class="address-title">收货地址</text>
+					<text class="address-name">{{ selectedAddress.name }}</text>
+					<text class="address-phone">{{ selectedAddress.phone }}</text>
 				</view>
-				<view class="address-info">
-					<view class="address-line1">
-						<text class="address-name">{{ selectedAddress.name }}</text>
-						<text class="address-phone">{{ selectedAddress.phone }}</text>
-					</view>
-					<text class="address-detail">{{ selectedAddress.fullAddress }}</text>
-				</view>
-				<text class="arrow-icon">></text>
+				<text class="address-detail">
+					{{ selectedAddress.province }}{{ selectedAddress.city }}{{ selectedAddress.district }}{{ selectedAddress.detail }}
+				</text>
 			</view>
 			<view class="address-empty" v-else>
-				<text class="plus-icon">+</text>
-				<text class="empty-text">请选择收货地址</text>
-				<text class="arrow-icon">></text>
+				<text class="empty-icon">➕</text>
+				<text class="empty-text">请添加配送地址</text>
 			</view>
+			<text class="arrow-icon">›</text>
 		</view>
 
 		<!-- 商品列表 -->
@@ -58,35 +107,14 @@
 			</view>
 		</view>
 
-		<!-- 配送方式 -->
-		<view class="delivery-section">
-			<view class="delivery-list">
-				<view class="delivery-item" @click="showDeliveryPopup = true">
-					<view class="delivery-left">
-						<text class="delivery-icon">🚚</text>
-						<text class="delivery-title">配送方式</text>
-					</view>
-					<view class="delivery-right">
-						<text class="delivery-value">{{ deliveryMethods[selectedDelivery].name }}</text>
-						<text class="arrow-icon">></text>
-					</view>
+		<!-- 预计时间 - 自取模式始终显示，配送模式需要选择地址后显示 -->
+		<view class="time-section" v-if="deliveryMode === 'pickup' || (deliveryMode === 'delivery' && selectedAddress)">
+			<view class="time-item">
+				<view class="time-left">
+					<text class="time-icon">🕰️</text>
+					<text class="time-title">{{ deliveryMode === 'pickup' ? '预计取餐时间' : '预计送达时间' }}</text>
 				</view>
-				
-				<view class="delivery-item" v-if="selectedDelivery === 0">
-					<view class="delivery-left">
-						<text class="delivery-icon">🕰️</text>
-						<text class="delivery-title">预计送达</text>
-					</view>
-					<text class="delivery-value">{{ estimatedTime }}</text>
-				</view>
-				
-				<view class="delivery-item" v-if="selectedDelivery === 1">
-					<view class="delivery-left">
-						<text class="delivery-icon">🕰️</text>
-						<text class="delivery-title">取餐时间</text>
-					</view>
-					<text class="delivery-value">{{ pickupTime }}</text>
-				</view>
+				<text class="time-value">{{ deliveryMode === 'pickup' ? pickupTime : estimatedTime }}</text>
 			</view>
 		</view>
 
@@ -100,7 +128,7 @@
 				<view class="coupon-right">
 					<text class="coupon-value">{{ selectedCoupon ? selectedCoupon.name : '请选择优惠券' }}</text>
 					<text class="coupon-discount" v-if="selectedCoupon">-¥{{ formatPrice(couponDiscount) }}</text>
-					<text class="arrow-icon">></text>
+					<text class="arrow-icon">›</text>
 				</view>
 			</view>
 		</view>
@@ -114,7 +142,7 @@
 				</view>
 				<view class="remark-right">
 					<text class="remark-value">{{ orderRemark || '无' }}</text>
-					<text class="arrow-icon">></text>
+					<text class="arrow-icon">›</text>
 				</view>
 			</view>
 		</view>
@@ -126,10 +154,7 @@
 					<text class="cost-title">商品金额</text>
 					<text class="cost-value">¥{{ formatPrice(goodsAmount) }}</text>
 				</view>
-				<view class="cost-item">
-					<text class="cost-title">配送费</text>
-					<text class="cost-value">¥{{ formatPrice(deliveryFee) }}</text>
-				</view>
+
 				<view class="cost-item" v-if="couponDiscount > 0">
 					<text class="cost-title">优惠券</text>
 					<text class="cost-value discount">-¥{{ formatPrice(couponDiscount) }}</text>
@@ -156,23 +181,29 @@
 			</button>
 		</view>
 
-		<!-- 配送方式选择弹窗 -->
-		<view class="popup-mask" v-if="showDeliveryPopup" @click="showDeliveryPopup = false">
+		<!-- 店铺选择弹窗 -->
+		<view class="popup-mask" v-if="showStorePopup" @click="showStorePopup = false">
 			<view class="popup-content" @click.stop>
 				<view class="popup-header">
-					<text class="popup-title">选择配送方式</text>
-					<text class="close-btn" @click="showDeliveryPopup = false">×</text>
+					<text class="popup-title">选择店铺</text>
+					<text class="close-btn" @click="showStorePopup = false">×</text>
 				</view>
-				<radio-group @change="onDeliveryChange">
-					<view class="delivery-option" v-for="(method, index) in deliveryMethods" :key="index">
-						<radio :value="index" :checked="selectedDelivery === index" />
-						<view class="delivery-info">
-							<text class="delivery-name">{{ method.name }}</text>
-							<text class="delivery-desc">{{ method.desc }}</text>
-							<text class="delivery-fee">{{ method.fee > 0 ? `¥${formatPrice(method.fee)}` : '免费' }}</text>
+				<view class="store-list">
+					<view 
+						class="store-option" 
+						v-for="store in storeList" 
+						:key="store.id"
+						:class="{ selected: selectedStore.id === store.id }"
+						@click="onStoreSelect(store)"
+					>
+						<view class="store-option-info">
+							<text class="store-option-name">{{ store.name }}</text>
+							<text class="store-option-address">{{ store.address }}</text>
+							<text class="store-option-distance">距离您 {{ store.distance }}</text>
 						</view>
+						<text class="check-icon" v-if="selectedStore.id === store.id">✓</text>
 					</view>
-				</radio-group>
+				</view>
 			</view>
 		</view>
 
@@ -228,31 +259,58 @@ import { getSelectedItems, clearCart } from '@/utils/cart.js'
 export default {
 	data() {
 		return {
+			deliveryMode: 'pickup', // 配送方式：pickup-自取, delivery-配送
 			orderItems: [],
-			selectedAddress: null,
-			selectedDelivery: 0, // 0: 外卖配送, 1: 到店自取
 			selectedCoupon: null,
+			selectedAddress: null,
 			orderRemark: '',
 			submitting: false,
-			showDeliveryPopup: false,
+			showStorePopup: false,
 			showRemarkPopup: false,
 			showPaymentSheet: false,
-			deliveryMethods: [
+			userLocation: null, // 用户位置
+			selectedStore: {
+				id: 1,
+				name: '奶茶小铺（科技园店）',
+				address: '深圳市南山区科技园南区',
+				phone: '0755-12345678',
+				latitude: 22.5431,
+				longitude: 114.0579,
+				distance: '1.2km'
+			},
+			storeList: [
 				{
-					name: '外卖配送',
-					desc: '30-45分钟送达',
-					fee: 3
+					id: 1,
+					name: '奶茶小铺（科技园店）',
+					address: '深圳市南山区科技园南区',
+					phone: '0755-12345678',
+					latitude: 22.5431,
+					longitude: 114.0579,
+					distance: '1.2km'
 				},
 				{
-					name: '到店自取',
-					desc: '15-20分钟制作完成',
-					fee: 0
+					id: 2,
+					name: '奶茶小铺（华强北店）',
+					address: '深圳市福田区华强北路',
+					phone: '0755-23456789',
+					latitude: 22.5461,
+					longitude: 114.0889,
+					distance: '3.5km'
+				},
+				{
+					id: 3,
+					name: '奶茶小铺（海岸城店）',
+					address: '深圳市南山区文心五路海岸城',
+					phone: '0755-34567890',
+					latitude: 22.5201,
+					longitude: 113.9301,
+					distance: '5.8km'
 				}
 			],
 			paymentMethods: [
 				{ name: '微信支付', value: 'wechat' },
 				{ name: '余额支付', value: 'balance' },
-				{ name: '组合支付', value: 'mixed' }
+				{ name: '支付宝支付', value: 'alipay' }
 			],
 			userInfo: {},
 			availableCoupons: []
@@ -271,9 +329,9 @@ export default {
 			}, 0)
 		},
 
-		// 配送费
+		// 配送费（奶茶店不需要配送费）
 		deliveryFee() {
-			return this.deliveryMethods[this.selectedDelivery].fee
+			return 0
 		},
 
 		// 优惠券折扣
@@ -325,6 +383,7 @@ export default {
 	onLoad() {
 		this.loadUserInfo()
 		this.loadOrderItems()
+		this.getUserLocation()
 		this.loadDefaultAddress()
 		this.loadAvailableCoupons()
 	},
@@ -459,10 +518,115 @@ export default {
 			})
 		},
 
-		// 配送方式改变
-		onDeliveryChange(value) {
-			this.selectedDelivery = value
-			this.showDeliveryPopup = false
+		// 切换配送方式
+		switchDeliveryMode(mode) {
+			this.deliveryMode = mode
+			
+			// 切换到配送模式时，检查是否有地址
+			if (mode === 'delivery' && !this.selectedAddress) {
+				uni.showToast({
+					title: '请先添加配送地址',
+					icon: 'none'
+				})
+			}
+		},
+
+		// 选择店铺
+		selectStore() {
+			this.showStorePopup = true
+		},
+
+		// 店铺选择
+		onStoreSelect(store) {
+			this.selectedStore = store
+			this.showStorePopup = false
+		},
+
+		// 切换配送方式
+		switchDeliveryMode(mode) {
+			this.deliveryMode = mode
+			
+			// 切换到配送模式时，检查是否有地址
+			if (mode === 'delivery' && !this.selectedAddress) {
+				uni.showToast({
+					title: '请先添加配送地址',
+					icon: 'none'
+				})
+			}
+		},
+
+		// 获取用户位置
+		getUserLocation() {
+			uni.getLocation({
+				type: 'gcj02',
+				success: (res) => {
+					this.userLocation = {
+						latitude: res.latitude,
+						longitude: res.longitude
+					}
+					
+					// 根据位置计算最近的店铺
+					this.calculateNearestStore()
+				},
+				fail: (err) => {
+					console.error('获取位置失败:', err)
+					uni.showToast({
+						title: '获取位置失败，使用默认店铺',
+						icon: 'none'
+					})
+				}
+			})
+		},
+
+		// 计算最近的店铺
+		calculateNearestStore() {
+			if (!this.userLocation) return
+			
+			// 简单的距离计算（实际应该用更精确的算法）
+			const distances = this.storeList.map(store => {
+				const distance = this.getDistance(
+					this.userLocation.latitude,
+					this.userLocation.longitude,
+					store.latitude,
+					store.longitude
+				)
+				return {
+					...store,
+					calculatedDistance: distance,
+					distance: distance < 1 ? `${(distance * 1000).toFixed(0)}m` : `${distance.toFixed(1)}km`
+				}
+			})
+			
+			// 按距离排序
+			distances.sort((a, b) => a.calculatedDistance - b.calculatedDistance)
+			
+			// 更新店铺列表和选中店铺
+			this.storeList = distances
+			this.selectedStore = distances[0]
+		},
+
+		// 计算两点间距离（单位：km）
+		getDistance(lat1, lng1, lat2, lng2) {
+			const radLat1 = lat1 * Math.PI / 180.0
+			const radLat2 = lat2 * Math.PI / 180.0
+			const a = radLat1 - radLat2
+			const b = lng1 * Math.PI / 180.0 - lng2 * Math.PI / 180.0
+			let s = 2 * Math.asin(Math.sqrt(Math.pow(Math.sin(a / 2), 2) +
+				Math.cos(radLat1) * Math.cos(radLat2) * Math.pow(Math.sin(b / 2), 2)))
+			s = s * 6378.137
+			s = Math.round(s * 10000) / 10000
+			return s
+		},
+
+		// 选择店铺
+		selectStore() {
+			this.showStorePopup = true
+		},
+
+		// 店铺选择
+		onStoreSelect(store) {
+			this.selectedStore = store
+			this.showStorePopup = false
 		},
 
 		// 确认备注
@@ -473,14 +637,6 @@ export default {
 		// 提交订单
 		async submitOrder() {
 			// 验证必填信息
-			if (this.selectedDelivery === 0 && !this.selectedAddress) {
-				uni.showToast({
-					title: '请选择收货地址',
-					icon: 'none'
-				})
-				return
-			}
-
 			if (!this.userInfo.id) {
 				uni.showModal({
 					title: '提示',
@@ -496,6 +652,15 @@ export default {
 				return
 			}
 
+			// 配送模式需要验证地址
+			if (this.deliveryMode === 'delivery' && !this.selectedAddress) {
+				uni.showToast({
+					title: '请选择配送地址',
+					icon: 'none'
+				})
+				return
+			}
+
 			// 显示支付方式选择
 			this.showPaymentSheet = true
 		},
@@ -507,41 +672,47 @@ export default {
 			try {
 				this.submitting = true
 				
-				// 构建订单数据
+				// 构建订单数据（匹配后端OrderCreateRequest）
 				const orderData = {
 					userId: this.userInfo.id,
+					storeId: this.selectedStore.id,
+					deliveryMode: this.deliveryMode, // pickup 或 delivery
+					addressId: this.deliveryMode === 'delivery' ? this.selectedAddress?.id : null,
 					items: this.orderItems.map(item => ({
 						productId: item.id,
 						quantity: item.quantity,
-						price: this.getCurrentPrice(item),
-						sweetness: item.sweetness,
-						temperature: item.temperature,
-						toppings: item.toppings,
-						remark: item.remark
+						sweetness: item.sweetness || 4,
+						temperature: item.temperature || 2,
+						toppings: Array.isArray(item.toppings) ? item.toppings.join(',') : ''
 					})),
-					deliveryType: this.selectedDelivery,
-					addressId: this.selectedAddress?.id,
-					couponId: this.selectedCoupon?.id,
-					remark: this.orderRemark,
-					goodsAmount: this.goodsAmount,
-					deliveryFee: this.deliveryFee,
-					couponDiscount: this.couponDiscount,
-					memberDiscount: this.memberDiscount,
-					totalAmount: this.totalAmount,
-					paymentMethod
+					remark: this.orderRemark || '',
+					payType: paymentMethod === 'wechat' ? 1 : (paymentMethod === 'alipay' ? 2 : 3)
 				}
+
+				console.log('提交订单数据:', orderData)
+				console.log('订单商品详情:', this.orderItems)
+				console.log('前端计算总金额:', this.totalAmount)
 
 				// 创建订单
 				const res = await api.order.create(orderData)
+				console.log('订单创建响应:', res)
 				
 				if (res.code === 200) {
 					const order = res.data
+					console.log('订单创建成功，订单数据:', order)
+					console.log('准备调用支付，支付方式:', paymentMethod)
 					
 					// 清空购物车
 					clearCart()
 					
 					// 发起支付
 					await this.processPayment(order, paymentMethod)
+				} else {
+					console.error('订单创建失败:', res)
+					uni.showToast({
+						title: res.message || '订单创建失败',
+						icon: 'none'
+					})
 				}
 			} catch (error) {
 				console.error('提交订单失败:', error)
@@ -557,54 +728,142 @@ export default {
 		// 处理支付
 		async processPayment(order, paymentMethod) {
 			try {
-				if (paymentMethod === 'wechat') {
-					// 微信支付
-					const payRes = await api.payment.wxPay({
-						orderNo: order.orderNo,
-						amount: order.totalAmount
-					})
-					
-					if (payRes.code === 200) {
-						// 调用微信支付
-						await uni.requestPayment({
-							provider: 'wxpay',
-							...payRes.data
+				console.log('开始处理支付，订单:', order, '支付方式:', paymentMethod)
+				
+				// 检查余额是否足够（余额支付时）
+				if (paymentMethod === 'balance') {
+					const currentBalance = this.userInfo.balance || 0
+					if (currentBalance < order.totalAmount) {
+						uni.showModal({
+							title: '余额不足',
+							content: `当前余额：¥${currentBalance.toFixed(2)}\n订单金额：¥${order.totalAmount}\n\n余额不足，是否前往充值？`,
+							success: (res) => {
+								if (res.confirm) {
+									uni.navigateTo({
+										url: '/pages/recharge/recharge'
+									})
+								}
+							}
 						})
-						
-						this.paymentSuccess(order)
+						return
 					}
+				}
+				
+				// 调用后端支付接口
+				let payRes
+				console.log('支付方式:', paymentMethod)
+				console.log('订单信息:', order)
+				
+				if (paymentMethod === 'wechat') {
+					// 微信支付（测试环境）
+					console.log('调用微信支付接口')
+					payRes = await api.payment.wxPay({
+						orderId: order.orderId,
+						orderNo: order.orderNo,
+						amount: order.totalAmount,
+						userId: this.userInfo.id
+					})
 				} else if (paymentMethod === 'balance') {
 					// 余额支付
-					const payRes = await api.payment.balancePay({
+					console.log('调用余额支付接口')
+					payRes = await api.payment.balancePay({
+						orderId: order.orderId,
 						orderNo: order.orderNo,
-						amount: order.totalAmount
+						amount: order.totalAmount,
+						userId: this.userInfo.id
 					})
-					
-					if (payRes.code === 200) {
-						this.paymentSuccess(order)
-					}
+				} else if (paymentMethod === 'alipay') {
+					// 支付宝支付（测试环境）
+					console.log('调用支付宝支付接口')
+					payRes = await api.payment.alipay({
+						orderId: order.orderId,
+						orderNo: order.orderNo,
+						amount: order.totalAmount,
+						userId: this.userInfo.id
+					})
+				} else {
+					console.error('未知的支付方式:', paymentMethod)
+					uni.showToast({
+						title: '不支持的支付方式',
+						icon: 'none'
+					})
+					return
+				}
+				
+				console.log('支付接口返回:', payRes)
+				
+				if (payRes && payRes.code === 200) {
+					// 支付成功
+					this.paymentSuccess(order, paymentMethod)
+				} else {
+					uni.showToast({
+						title: payRes?.message || '支付失败',
+						icon: 'none'
+					})
 				}
 			} catch (error) {
 				console.error('支付失败:', error)
 				uni.showToast({
-					title: '支付失败',
+					title: error.message || '支付失败',
 					icon: 'none'
 				})
 			}
 		},
+		
+		// 获取支付方式名称
+		getPaymentMethodName(method) {
+			const names = {
+				'wechat': '微信支付',
+				'alipay': '支付宝',
+				'balance': '余额支付'
+			}
+			return names[method] || '未知'
+		},
+		
+		// 拨打店铺电话
+		callStore() {
+			uni.makePhoneCall({
+				phoneNumber: this.selectedStore.phone
+			})
+		},
+		
+		// 导航到店铺
+		navigateToStore() {
+			uni.openLocation({
+				latitude: this.selectedStore.latitude,
+				longitude: this.selectedStore.longitude,
+				name: this.selectedStore.name,
+				address: this.selectedStore.address
+			})
+		},
 
 		// 支付成功
-		paymentSuccess(order) {
+		async paymentSuccess(order, paymentMethod) {
+			console.log('支付成功，订单:', order, '支付方式:', paymentMethod)
+			
+			// 重新获取用户信息（更新余额）
+			try {
+				const userRes = await api.user.getInfo(this.userInfo.id)
+				if (userRes.code === 200) {
+					this.userInfo = userRes.data
+					uni.setStorageSync('userInfo', userRes.data)
+				}
+			} catch (error) {
+				console.error('获取用户信息失败:', error)
+			}
+			
 			uni.showToast({
 				title: '支付成功',
-				icon: 'success'
+				icon: 'success',
+				duration: 2000
 			})
 			
 			setTimeout(() => {
+				// 跳转到订单列表
 				uni.redirectTo({
-					url: `/pages/order-detail/order-detail?id=${order.id}`
+					url: '/pages/order-list/order-list'
 				})
-			}, 1500)
+			}, 2000)
 		},
 
 		// 工具方法
@@ -684,6 +943,188 @@ export default {
 
 .arrow-icon {
 	font-size: 24rpx;
+	color: #999;
+}
+
+/* 店铺信息 - 现代化设计 */
+.store-section {
+	background: white;
+	margin-bottom: 20rpx;
+	padding: 30rpx;
+	border-radius: 16rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+}
+
+.section-title {
+	display: flex;
+	align-items: center;
+	margin-bottom: 20rpx;
+}
+
+.title-icon {
+	font-size: 32rpx;
+	margin-right: 12rpx;
+}
+
+.title-text {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #333;
+}
+
+.store-header {
+	display: flex;
+	align-items: center;
+	margin-bottom: 24rpx;
+	padding: 20rpx;
+	background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 100%);
+	border-radius: 16rpx;
+}
+
+.store-icon {
+	width: 80rpx;
+	height: 80rpx;
+	background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+	border-radius: 16rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 40rpx;
+	margin-right: 20rpx;
+	box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.3);
+}
+
+.store-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+}
+
+.store-name {
+	font-size: 30rpx;
+	font-weight: 700;
+	color: #333;
+}
+
+.store-address {
+	font-size: 24rpx;
+	color: #666;
+}
+
+.store-distance {
+	font-size: 22rpx;
+	color: #ff6b35;
+	font-weight: 600;
+}
+
+.store-info-card {
+	padding: 24rpx;
+	background: linear-gradient(135deg, #f8f9fa 0%, #f0f1f3 100%);
+	border-radius: 12rpx;
+	border: 1rpx solid #e8e9eb;
+}
+
+.store-info-card .store-name {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #333;
+	margin-bottom: 8rpx;
+	display: block;
+}
+
+.store-info-card .store-address {
+	font-size: 24rpx;
+	color: #666;
+	display: block;
+}
+
+.store-actions {
+	display: flex;
+	gap: 12rpx;
+}
+
+.store-action {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	padding: 16rpx;
+	background: white;
+	border-radius: 12rpx;
+	border: 1rpx solid #f0f0f0;
+	transition: all 0.3s;
+}
+
+.store-action:active {
+	background: #f8f9fa;
+	transform: scale(0.95);
+}
+
+.action-icon {
+	font-size: 32rpx;
+	margin-bottom: 6rpx;
+}
+
+.action-text {
+	font-size: 22rpx;
+	color: #666;
+	font-weight: 500;
+}
+
+.change-store-hint {
+	display: block;
+	text-align: center;
+	font-size: 24rpx;
+	color: #999;
+	margin-top: 16rpx;
+	padding-top: 16rpx;
+	border-top: 1rpx dashed #e8e9eb;
+}
+
+/* 配送地址 */
+.address-section {
+	background: white;
+	margin-bottom: 20rpx;
+	padding: 30rpx;
+	border-radius: 16rpx;
+	box-shadow: 0 2rpx 12rpx rgba(0, 0, 0, 0.04);
+	position: relative;
+}
+
+.address-card {
+	padding: 24rpx;
+	background: linear-gradient(135deg, #f8f9fa 0%, #f0f1f3 100%);
+	border-radius: 12rpx;
+	border: 1rpx solid #e8e9eb;
+}
+
+.address-empty {
+	display: flex;
+	align-items: center;
+	padding: 24rpx;
+	background: #f8f9fa;
+	border-radius: 12rpx;
+	border: 2rpx dashed #ddd;
+}
+
+.empty-icon {
+	font-size: 32rpx;
+	color: #ff6b35;
+	margin-right: 16rpx;
+}
+
+.empty-text {
+	font-size: 28rpx;
+	color: #999;
+}
+
+.address-section .arrow-icon {
+	position: absolute;
+	right: 30rpx;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 32rpx;
 	color: #999;
 }
 
@@ -1130,5 +1571,108 @@ export default {
 	font-size: 24rpx;
 	color: #ff6b35;
 	font-weight: 600;
+}
+
+/* 店铺选择弹窗 */
+.store-list {
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+.store-option {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	padding: 24rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+	transition: all 0.3s;
+}
+
+.store-option:last-child {
+	border-bottom: none;
+}
+
+.store-option.selected {
+	background: linear-gradient(135deg, #fff5f0 0%, #ffe8dc 100%);
+}
+
+.store-option:active {
+	background: #f8f9fa;
+}
+
+.store-option-info {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+	gap: 6rpx;
+}
+
+.store-option-name {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #333;
+}
+
+.store-option-address {
+	font-size: 24rpx;
+	color: #666;
+}
+
+.store-option-distance {
+	font-size: 22rpx;
+	color: #ff6b35;
+	font-weight: 600;
+}
+
+.check-icon {
+	font-size: 40rpx;
+	color: #ff6b35;
+	font-weight: 700;
+}
+
+/* 配送方式选择 - 现代化设计 */
+.delivery-mode-section {
+	background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+	margin-bottom: 20rpx;
+	padding: 40rpx 30rpx 30rpx;
+}
+
+.mode-tabs {
+	display: flex;
+	gap: 16rpx;
+	background: rgba(255, 255, 255, 0.2);
+	padding: 6rpx;
+	border-radius: 50rpx;
+}
+
+.mode-tab {
+	flex: 1;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	gap: 8rpx;
+	padding: 20rpx 24rpx;
+	background: transparent;
+	border-radius: 44rpx;
+	transition: all 0.3s ease;
+}
+
+.mode-tab.active {
+	background: white;
+	box-shadow: 0 4rpx 12rpx rgba(0, 0, 0, 0.1);
+}
+
+.tab-icon {
+	font-size: 36rpx;
+}
+
+.tab-text {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: rgba(255, 255, 255, 0.8);
+}
+
+.mode-tab.active .tab-text {
+	color: #ff6b35;
 }
 </style>

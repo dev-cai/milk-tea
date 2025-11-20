@@ -4,7 +4,7 @@
 		<view class="user-header">
 			<view class="user-info">
 				<view class="avatar-section" @click="goToProfile">
-					<image class="avatar" :src="userInfo.avatar || '/static/default-avatar.png'" mode="aspectFill"></image>
+					<image class="avatar" :src="userInfo.avatar || 'https://via.placeholder.com/200x200/CCCCCC/666666?text=Avatar'" mode="aspectFill"></image>
 					<view class="avatar-edit">👤</view>
 				</view>
 				<view class="info-section">
@@ -48,7 +48,7 @@
 		<view class="order-section">
 			<view class="section-header">
 				<text class="section-title">我的订单</text>
-				<text class="section-more" @click="goToOrderList()">全部订单 ></text>
+				<text class="section-more" @click="goToOrderList()">全部订单 ›</text>
 			</view>
 			<view class="order-types">
 				<view class="order-type" @click="goToOrderList(0)">
@@ -84,35 +84,35 @@
 				<view class="menu-item" @click="goToAddress">
 					<text class="menu-icon">📍</text>
 					<text class="menu-text">地址管理</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="goToMember">
 					<text class="menu-icon">👑</text>
 					<text class="menu-text">会员中心</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="goToCoupon">
 					<text class="menu-icon">🎫</text>
 					<text class="menu-text">我的优惠券</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-arrow">›</text>
 				</view>
 			</view>
 
 			<view class="menu-group">
 				<view class="menu-item" @click="shareApp">
 					<text class="menu-icon">📤</text>
-					<text class="menu-text">分享给好友</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-text">邀请好友</text>
+					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="goToFeedback">
 					<text class="menu-icon">💬</text>
 					<text class="menu-text">意见反馈</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="contactService">
 					<text class="menu-icon">📞</text>
 					<text class="menu-text">联系客服</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-arrow">›</text>
 				</view>
 			</view>
 
@@ -120,7 +120,7 @@
 				<view class="menu-item" @click="goToSettings">
 					<text class="menu-icon">⚙️</text>
 					<text class="menu-text">设置</text>
-					<text class="menu-arrow">></text>
+					<text class="menu-arrow">›</text>
 				</view>
 			</view>
 		</view>
@@ -188,26 +188,45 @@ export default {
 		// 加载订单统计
 		async loadOrderCounts() {
 			try {
-				if (!this.userInfo.id) return
+				if (!this.userInfo.id) {
+					console.log('用户未登录，跳过订单统计')
+					return
+				}
 
-				const res = await api.order.getList({ 
-					userId: this.userInfo.id,
-					pageSize: 1,
-					current: 1
+				console.log('开始加载订单统计，用户ID:', this.userInfo.id)
+
+				// 获取各状态的订单数量
+				const [unpaidRes, preparingRes, readyRes, refundRes] = await Promise.all([
+					api.order.getList({ userId: this.userInfo.id, status: 0, page: 1, size: 1 }), // 待支付
+					api.order.getList({ userId: this.userInfo.id, status: 1, page: 1, size: 1 }), // 待制作
+					api.order.getList({ userId: this.userInfo.id, status: 3, page: 1, size: 1 }), // 待取餐
+					api.order.getList({ userId: this.userInfo.id, status: 6, page: 1, size: 1 })  // 售后
+				])
+				
+				console.log('订单统计响应:', {
+					unpaid: unpaidRes,
+					preparing: preparingRes,
+					ready: readyRes,
+					refund: refundRes
 				})
 				
-				if (res.code === 200) {
-					// 这里应该从后端获取各状态订单数量
-					// 暂时使用模拟数据
-					this.orderCounts = {
-						unpaid: 2,
-						preparing: 1,
-						ready: 0,
-						refund: 0
-					}
+				this.orderCounts = {
+					unpaid: unpaidRes.data?.total || 0,
+					preparing: preparingRes.data?.total || 0,
+					ready: readyRes.data?.total || 0,
+					refund: refundRes.data?.total || 0
 				}
+				
+				console.log('订单统计结果:', this.orderCounts)
 			} catch (error) {
 				console.error('加载订单统计失败:', error)
+				// 出错时使用默认值
+				this.orderCounts = {
+					unpaid: 0,
+					preparing: 0,
+					ready: 0,
+					refund: 0
+				}
 			}
 		},
 
@@ -303,9 +322,9 @@ export default {
 		// 跳转充值
 		goToRecharge() {
 			if (!this.checkLogin()) return
-			uni.showToast({
-				title: '充值功能开发中',
-				icon: 'none'
+			
+			uni.navigateTo({
+				url: '/pages/recharge/recharge'
 			})
 		},
 
@@ -331,28 +350,19 @@ export default {
 			})
 		},
 
-		// 分享应用
+		// 分享应用 - 跳转到邀请页面
 		shareApp() {
-			uni.share({
-				provider: 'weixin',
-				scene: 'WXSceneSession',
-				type: 0,
-				href: '',
-				title: '奶茶小程序',
-				summary: '好喝的奶茶，优惠多多！',
-				imageUrl: '/static/logo.png',
-				success: () => {
-					uni.showToast({
-						title: '分享成功',
-						icon: 'success'
-					})
-				},
-				fail: () => {
-					// 微信小程序使用转发
-					uni.showShareMenu({
-						withShareTicket: true
-					})
-				}
+			console.log('点击分享按钮')
+			console.log('用户信息:', this.userInfo)
+			
+			if (!this.checkLogin()) {
+				console.log('未登录，跳转登录页面')
+				return
+			}
+			
+			console.log('跳转到邀请页面')
+			uni.navigateTo({
+				url: '/pages/invite/invite'
 			})
 		},
 
@@ -365,10 +375,23 @@ export default {
 
 		// 检查登录状态
 		checkLogin() {
-			if (!this.userInfo.id) {
+			const token = uni.getStorageSync('token')
+			const userInfo = uni.getStorageSync('userInfo')
+			
+			console.log('检查登录状态 - token:', token)
+			console.log('检查登录状态 - userInfo:', userInfo)
+			
+			if (!token || !userInfo || !userInfo.id) {
+				console.log('未登录，跳转登录页')
 				this.goToLogin()
 				return false
 			}
+			
+			// 确保当前页面的userInfo是最新的
+			if (!this.userInfo.id) {
+				this.userInfo = userInfo
+			}
+			
 			return true
 		},
 

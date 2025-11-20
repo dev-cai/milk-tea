@@ -9,7 +9,7 @@
 						<text class="member-name">{{ userInfo.nickname || '会员' }}</text>
 					</view>
 					<view class="member-avatar">
-						<image class="avatar" :src="userInfo.avatar || '/static/default-avatar.png'" mode="aspectFill"></image>
+						<image class="avatar" :src="userInfo.avatar || 'https://via.placeholder.com/200x200/CCCCCC/666666?text=Avatar'" mode="aspectFill"></image>
 					</view>
 				</view>
 				
@@ -349,9 +349,8 @@ export default {
 
 		// 跳转充值
 		goToRecharge() {
-			uni.showToast({
-				title: '充值功能开发中',
-				icon: 'none'
+			uni.navigateTo({
+				url: '/pages/recharge/recharge'
 			})
 		},
 

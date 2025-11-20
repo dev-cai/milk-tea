@@ -34,11 +34,13 @@ public class OrderService {
     private final OrderMapper orderMapper;
     private final OrderItemMapper orderItemMapper;
     private final ProductMapper productMapper;
+    private final com.milktea.mapper.UserMapper userMapper;
     
-    public OrderService(OrderMapper orderMapper, OrderItemMapper orderItemMapper, ProductMapper productMapper) {
+    public OrderService(OrderMapper orderMapper, OrderItemMapper orderItemMapper, ProductMapper productMapper, com.milktea.mapper.UserMapper userMapper) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.productMapper = productMapper;
+        this.userMapper = userMapper;
     }
     
     /**
@@ -46,73 +48,126 @@ public class OrderService {
      */
     @Transactional
     public Result<Map<String, Object>> createOrder(OrderCreateRequest request) {
-        // 生成订单号
-        String orderNo = generateOrderNo();
-        
-        // 计算订单总金额
-        BigDecimal totalAmount = BigDecimal.ZERO;
-        
-        // 创建订单
-        Order order = new Order();
-        order.setOrderNo(orderNo);
-        order.setUserId(request.getUserId());
-        order.setStatus(0); // 待支付
-        order.setPayType(request.getPayType());
-        order.setRemark(request.getRemark());
-        order.setDiscountAmount(BigDecimal.ZERO);
-        
-        orderMapper.insert(order);
-        
-        // 创建订单项
-        for (OrderCreateRequest.OrderItemRequest itemRequest : request.getItems()) {
-            Product product = productMapper.selectById(itemRequest.getProductId());
-            if (product == null || product.getStatus() == 0) {
-                throw new BusinessException("商品不存在或已下架");
+        try {
+            log.info("开始创建订单，用户ID: {}", request.getUserId());
+            
+            // 生成订单号
+            String orderNo = generateOrderNo();
+            log.info("生成订单号: {}", orderNo);
+            
+            // 计算订单总金额
+            BigDecimal totalAmount = BigDecimal.ZERO;
+            
+            // 获取用户信息
+            com.milktea.entity.User user = userMapper.selectById(request.getUserId());
+            if (user == null) {
+                log.error("用户不存在，用户ID: {}", request.getUserId());
+                throw new BusinessException("用户不存在");
             }
+            log.info("获取用户信息成功: {}", user.getUsername());
             
-            if (product.getStock() < itemRequest.getQuantity()) {
-                throw new BusinessException("商品库存不足");
+            // 创建订单
+            Order order = new Order();
+            order.setOrderNo(orderNo);
+            order.setUserId(request.getUserId());
+            order.setUsername(user.getUsername());
+            order.setStatus(0); // 待支付
+            order.setPayType(request.getPayType());
+            order.setRemark(request.getRemark());
+            order.setDiscountAmount(BigDecimal.ZERO);
+            order.setTotalAmount(BigDecimal.ZERO); // 先设置为0，后续更新
+            order.setPayAmount(BigDecimal.ZERO);
+            order.setActualAmount(BigDecimal.ZERO);
+            
+            log.info("准备插入订单");
+            orderMapper.insert(order);
+            log.info("订单插入成功，订单ID: {}", order.getId());
+        
+            // 创建订单项
+            log.info("开始创建订单项，商品数量: {}", request.getItems().size());
+            for (OrderCreateRequest.OrderItemRequest itemRequest : request.getItems()) {
+                log.info("处理商品ID: {}", itemRequest.getProductId());
+                
+                Product product = productMapper.selectById(itemRequest.getProductId());
+                if (product == null || product.getStatus() == 0) {
+                    log.error("商品不存在或已下架，商品ID: {}", itemRequest.getProductId());
+                    throw new BusinessException("商品不存在或已下架");
+                }
+                
+                if (product.getStock() < itemRequest.getQuantity()) {
+                    log.error("商品库存不足，商品ID: {}, 库存: {}, 需要: {}", 
+                        itemRequest.getProductId(), product.getStock(), itemRequest.getQuantity());
+                    throw new BusinessException("商品库存不足");
+                }
+                
+                OrderItem orderItem = new OrderItem();
+                orderItem.setOrderId(order.getId());
+                orderItem.setProductId(product.getId());
+                orderItem.setProductName(product.getName());
+                orderItem.setProductImage(product.getImage());
+                orderItem.setPrice(product.getPrice()); // 保存商品基础价格
+                orderItem.setQuantity(itemRequest.getQuantity());
+                orderItem.setSweetness(itemRequest.getSweetness());
+                orderItem.setTemperature(itemRequest.getTemperature());
+                orderItem.setToppings(itemRequest.getToppings());
+                
+                log.info("准备插入订单项");
+                orderItemMapper.insert(orderItem);
+                log.info("订单项插入成功");
+                
+                // 计算该商品的总金额（商品价格 × 数量）
+                BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(itemRequest.getQuantity()));
+                
+                // 计算加料价格
+                if (itemRequest.getToppings() != null && !itemRequest.getToppings().isEmpty()) {
+                    String[] toppings = itemRequest.getToppings().split(",");
+                    int toppingCount = toppings.length;
+                    BigDecimal toppingPrice = new BigDecimal("3.00"); // 每个加料3元
+                    BigDecimal toppingAmount = toppingPrice.multiply(new BigDecimal(toppingCount)).multiply(new BigDecimal(itemRequest.getQuantity()));
+                    itemAmount = itemAmount.add(toppingAmount);
+                    log.info("商品加料数量: {}, 加料总价: {}", toppingCount, toppingAmount);
+                }
+                
+                totalAmount = totalAmount.add(itemAmount);
+                log.info("商品小计: {}, 累计金额: {}", itemAmount, totalAmount);
+                
+                // 减库存
+                product.setStock(product.getStock() - itemRequest.getQuantity());
+                productMapper.updateById(product);
+                log.info("库存更新成功");
             }
+        
+            // 更新订单总金额
+            log.info("更新订单总金额: {}", totalAmount);
+            order.setTotalAmount(totalAmount);
+            order.setPayAmount(totalAmount);
+            order.setActualAmount(totalAmount); // 实付金额等于应付金额
+            orderMapper.updateById(order);
+            log.info("订单更新成功");
             
-            OrderItem orderItem = new OrderItem();
-            orderItem.setOrderId(order.getId());
-            orderItem.setProductId(product.getId());
-            orderItem.setProductName(product.getName());
-            orderItem.setProductImage(product.getImage());
-            orderItem.setPrice(product.getPrice());
-            orderItem.setQuantity(itemRequest.getQuantity());
-            orderItem.setSweetness(itemRequest.getSweetness());
-            orderItem.setTemperature(itemRequest.getTemperature());
-            orderItem.setToppings(itemRequest.getToppings());
+            Map<String, Object> result = new HashMap<>();
+            result.put("orderId", order.getId());
+            result.put("orderNo", orderNo);
+            result.put("totalAmount", totalAmount);
             
-            orderItemMapper.insert(orderItem);
+            log.info("订单创建完成，订单号: {}", orderNo);
+            return Result.success("订单创建成功", result);
             
-            // 计算金额
-            BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(itemRequest.getQuantity()));
-            totalAmount = totalAmount.add(itemAmount);
-            
-            // 减库存
-            product.setStock(product.getStock() - itemRequest.getQuantity());
-            productMapper.updateById(product);
+        } catch (BusinessException e) {
+            log.error("业务异常: {}", e.getMessage());
+            throw e;
+        } catch (Exception e) {
+            log.error("创建订单失败", e);
+            throw new BusinessException("创建订单失败: " + e.getMessage());
         }
-        
-        // 更新订单总金额
-        order.setTotalAmount(totalAmount);
-        order.setPayAmount(totalAmount);
-        orderMapper.updateById(order);
-        
-        Map<String, Object> result = new HashMap<>();
-        result.put("orderId", order.getId());
-        result.put("orderNo", orderNo);
-        result.put("totalAmount", totalAmount);
-        
-        return Result.success("订单创建成功", result);
     }
     
     /**
      * 获取用户订单列表
      */
     public Result<PageResult<Order>> getUserOrders(Long userId, Integer page, Integer size, Integer status) {
+        log.info("查询用户订单列表，userId: {}, page: {}, size: {}, status: {}", userId, page, size, status);
+        
         Page<Order> pageObj = new Page<>(page, size);
         
         LambdaQueryWrapper<Order> queryWrapper = new LambdaQueryWrapper<>();
@@ -126,12 +181,17 @@ public class OrderService {
         
         Page<Order> result = orderMapper.selectPage(pageObj, queryWrapper);
         
+        log.info("查询结果 - 记录数: {}, 总数: {}, 当前页: {}, 每页大小: {}", 
+            result.getRecords().size(), result.getTotal(), result.getCurrent(), result.getSize());
+        
         PageResult<Order> pageResult = new PageResult<>(
             result.getRecords(),
             result.getTotal(),
             result.getCurrent(),
             result.getSize()
         );
+        
+        log.info("返回PageResult - total: {}", pageResult.getTotal());
         
         return Result.success("查询成功", pageResult);
     }

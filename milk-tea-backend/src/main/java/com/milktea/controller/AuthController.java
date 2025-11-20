@@ -62,13 +62,14 @@ public class AuthController {
     }
     
     /**
-     * 手机号登录
+     * 手机号登录（支持邀请码）
      */
     @PostMapping("/phone-login")
     public Result<Map<String, Object>> phoneLogin(@RequestBody Map<String, String> request) {
         String phone = request.get("phone");
         String code = request.get("code");
+        String inviteCode = request.get("inviteCode");
         
-        return authService.phoneLogin(phone, code);
+        return authService.phoneLogin(phone, code, inviteCode);
     }
 }

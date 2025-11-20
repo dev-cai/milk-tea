@@ -114,7 +114,8 @@ export default {
 				code: ''
 			},
 			codeCountdown: 0,
-			agreed: false
+			agreed: false,
+			inviteCode: '' // 邀请码
 		}
 	},
 	onLoad(options) {
@@ -122,6 +123,17 @@ export default {
 		const token = uni.getStorageSync('token')
 		if (token) {
 			this.goBack()
+		}
+		
+		// 获取邀请码参数
+		if (options.inviteCode) {
+			this.inviteCode = options.inviteCode
+			console.log('收到邀请码:', this.inviteCode)
+			uni.showToast({
+				title: '欢迎通过好友邀请注册',
+				icon: 'none',
+				duration: 2000
+			})
 		}
 		
 		// 调试：检查API是否正确加载
@@ -138,8 +150,15 @@ export default {
 
 		// 手机号登录
 		async phoneLogin() {
-			if (!this.validatePhoneForm()) return
+			console.log('=== 开始手机号登录流程 ===')
+			
+			if (!this.validatePhoneForm()) {
+				console.log('表单验证失败')
+				return
+			}
+			
 			if (!this.agreed) {
+				console.log('未同意协议')
 				uni.showToast({
 					title: '请先同意用户协议',
 					icon: 'none'
@@ -148,29 +167,54 @@ export default {
 			}
 
 			try {
+				console.log('1. 准备登录，手机号:', this.phoneForm.phone, '验证码:', this.phoneForm.code)
+				
 				uni.showLoading({ title: '登录中...' })
 				
-				// 调用手机号登录接口
+				console.log('2. 调用API接口...')
+				// 调用手机号登录接口，带上邀请码
 				const res = await api.auth.phoneLogin({
 					phone: this.phoneForm.phone,
-					code: this.phoneForm.code
+					code: this.phoneForm.code,
+					inviteCode: this.inviteCode || undefined
 				})
 
+				console.log('3. 收到登录响应:', JSON.stringify(res))
+				console.log('3.1 响应类型:', typeof res)
+				console.log('3.2 响应code:', res.code)
+				console.log('3.3 响应data:', res.data)
+				console.log('3.4 响应message:', res.message)
+				
 				if (res.code === 200) {
+					console.log('4. 登录成功，准备处理登录数据')
 					await this.handleLoginSuccess(res.data)
+				} else {
+					console.log('4. 登录失败，code:', res.code, 'message:', res.message)
+					uni.hideLoading()
+					uni.showToast({
+						title: res.message || '登录失败',
+						icon: 'none'
+					})
 				}
 			} catch (error) {
-				console.error('登录失败:', error)
+				console.error('=== 登录异常 ===')
+				console.error('异常对象:', error)
+				console.error('异常类型:', typeof error)
+				console.error('异常字符串:', JSON.stringify(error))
+				
+				uni.hideLoading()
+				
 				let errorMsg = '登录失败'
 				if (error && typeof error === 'object') {
-					errorMsg = error.msg || error.message || errorMsg
+					errorMsg = error.message || errorMsg
+					console.error('错误消息:', errorMsg)
 				}
+				
 				uni.showToast({
 					title: errorMsg,
-					icon: 'none'
+					icon: 'none',
+					duration: 2000
 				})
-			} finally {
-				uni.hideLoading()
 			}
 		},
 
@@ -272,24 +316,32 @@ export default {
 				console.log('发送验证码响应:', res)
 				
 				if (res.code === 200) {
-					uni.showToast({
-						title: '验证码已发送（测试：123456）',
-						icon: 'success',
-						duration: 3000
-					})
-					
+					// 先开始倒计时
 					this.startCountdown()
+					
+					// 延迟显示toast，避免被loading遮挡
+					setTimeout(() => {
+						uni.showToast({
+							title: '验证码已发送（测试：123456）',
+							icon: 'success',
+							duration: 2000
+						})
+					}, 300)
 				}
 			} catch (error) {
 				console.error('发送验证码失败:', error)
 				let errorMsg = '发送失败'
 				if (error && typeof error === 'object') {
-					errorMsg = error.msg || error.message || errorMsg
+					errorMsg = error.message || errorMsg
 				}
-				uni.showToast({
-					title: errorMsg,
-					icon: 'none'
-				})
+				
+				setTimeout(() => {
+					uni.showToast({
+						title: errorMsg,
+						icon: 'none',
+						duration: 2000
+					})
+				}, 300)
 			}
 		},
 
@@ -327,19 +379,44 @@ export default {
 
 		// 处理登录成功
 		async handleLoginSuccess(data) {
+			console.log('=== 处理登录成功 ===')
+			console.log('5. 收到的数据:', JSON.stringify(data))
+			
 			// 保存token和用户信息
-			uni.setStorageSync('token', data.token)
-			uni.setStorageSync('userInfo', data.userInfo)
+			if (data.token) {
+				uni.setStorageSync('token', data.token)
+				console.log('6. Token已保存:', data.token)
+			} else {
+				console.warn('6. 警告：没有token')
+			}
+			
+			if (data.userInfo) {
+				uni.setStorageSync('userInfo', data.userInfo)
+				console.log('7. 用户信息已保存:', JSON.stringify(data.userInfo))
+			} else {
+				console.warn('7. 警告：没有userInfo')
+			}
+			
 			uni.removeStorageSync('isGuest')
-
-			uni.showToast({
-				title: '登录成功',
-				icon: 'success'
-			})
-
+			
+			console.log('8. 先隐藏loading，再显示toast')
+			uni.hideLoading()
+			
+			// 延迟显示toast和跳转，确保loading完全关闭
 			setTimeout(() => {
-				this.goBack()
-			}, 1500)
+				console.log('9. 显示成功提示')
+				uni.showToast({
+					title: '登录成功',
+					icon: 'success',
+					duration: 1500
+				})
+				
+				console.log('10. 设置跳转定时器')
+				setTimeout(() => {
+					console.log('11. 执行跳转')
+					this.goBack()
+				}, 1500)
+			}, 100)
 		},
 
 		// 切换协议同意状态

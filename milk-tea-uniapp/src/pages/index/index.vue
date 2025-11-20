@@ -187,16 +187,16 @@ export default {
 			try {
 				const res = await api.marketing.getBanners()
 				this.banners = res.data || [
-					{ id: 1, image: '/static/banner1.jpg', url: '' },
-					{ id: 2, image: '/static/banner2.jpg', url: '' },
-					{ id: 3, image: '/static/banner3.jpg', url: '' }
+					{ id: 1, image: 'https://via.placeholder.com/750x300/FF6B35/FFFFFF?text=Banner+1', url: '' },
+					{ id: 2, image: 'https://via.placeholder.com/750x300/F7931E/FFFFFF?text=Banner+2', url: '' },
+					{ id: 3, image: 'https://via.placeholder.com/750x300/FF8C42/FFFFFF?text=Banner+3', url: '' }
 				]
 			} catch (error) {
 				// 使用默认数据
 				this.banners = [
-					{ id: 1, image: '/static/banner1.jpg', url: '' },
-					{ id: 2, image: '/static/banner2.jpg', url: '' },
-					{ id: 3, image: '/static/banner3.jpg', url: '' }
+					{ id: 1, image: 'https://via.placeholder.com/750x300/FF6B35/FFFFFF?text=Banner+1', url: '' },
+					{ id: 2, image: 'https://via.placeholder.com/750x300/F7931E/FFFFFF?text=Banner+2', url: '' },
+					{ id: 3, image: 'https://via.placeholder.com/750x300/FF8C42/FFFFFF?text=Banner+3', url: '' }
 				]
 			}
 		},
@@ -270,7 +270,7 @@ export default {
 							id: 1,
 							name: '珍珠奶茶',
 							description: '经典珍珠奶茶，香甜可口',
-							image: '/static/product1.jpg',
+							image: 'https://via.placeholder.com/200x200/FFB6C1/FFFFFF?text=Pearl+Tea',
 							price: 18.00,
 							memberPrice: 16.00,
 							sales: 999,
@@ -280,7 +280,7 @@ export default {
 							id: 2,
 							name: '芝士奶盖',
 							description: '浓郁芝士，层次丰富',
-							image: '/static/product2.jpg',
+							image: 'https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Cheese+Tea',
 							price: 22.00,
 							memberPrice: 20.00,
 							sales: 888,
@@ -303,7 +303,7 @@ export default {
 						id: 1,
 						name: '珍珠奶茶',
 						description: '经典珍珠奶茶，香甜可口',
-						image: '/static/product1.jpg',
+						image: 'https://via.placeholder.com/200x200/FFB6C1/FFFFFF?text=Pearl+Tea',
 						price: 18.00,
 						memberPrice: 16.00,
 						sales: 999
@@ -312,7 +312,7 @@ export default {
 						id: 2,
 						name: '芝士奶盖',
 						description: '浓郁芝士，层次丰富',
-						image: '/static/product2.jpg',
+						image: 'https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Cheese+Tea',
 						price: 22.00,
 						memberPrice: 20.00,
 						sales: 888
@@ -332,14 +332,14 @@ export default {
 					{
 						id: 3,
 						name: '柠檬蜂蜜茶',
-						image: '/static/product3.jpg',
+						image: 'https://via.placeholder.com/200x200/FFFF99/333333?text=Lemon+Tea',
 						price: 15.00,
 						originalPrice: 20.00
 					},
 					{
 						id: 4,
 						name: '红豆奶茶',
-						image: '/static/product4.jpg',
+						image: 'https://via.placeholder.com/200x200/CD5C5C/FFFFFF?text=Red+Bean',
 						price: 16.00,
 						originalPrice: 22.00
 					}
@@ -359,14 +359,14 @@ export default {
 						id: 5,
 						name: '抹茶拿铁',
 						description: '日式抹茶，香醇浓郁',
-						image: '/static/product5.jpg',
+						image: 'https://via.placeholder.com/200x200/90EE90/333333?text=Matcha+Latte',
 						price: 25.00
 					},
 					{
 						id: 6,
 						name: '草莓奶昔',
 						description: '新鲜草莓，清甜可口',
-						image: '/static/product6.jpg',
+						image: 'https://via.placeholder.com/200x200/FF69B4/FFFFFF?text=Strawberry',
 						price: 20.00
 					}
 				]

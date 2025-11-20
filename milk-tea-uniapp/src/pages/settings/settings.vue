@@ -9,17 +9,17 @@
 				<view class="setting-item" @click="goToProfile">
 					<text class="setting-icon">👤</text>
 					<text class="setting-text">个人信息</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item" @click="goToAddress">
 					<text class="setting-icon">📍</text>
 					<text class="setting-text">地址管理</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item" @click="changePassword">
 					<text class="setting-icon">🔒</text>
 					<text class="setting-text">修改密码</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 			</view>
 		</view>
@@ -72,12 +72,12 @@
 				<view class="setting-item" @click="showPrivacyPolicy">
 					<text class="setting-icon">🛡️</text>
 					<text class="setting-text">隐私政策</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item" @click="showUserAgreement">
 					<text class="setting-icon">📄</text>
 					<text class="setting-text">用户协议</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item">
 					<text class="setting-icon">👁️</text>
@@ -102,23 +102,23 @@
 					<text class="setting-icon">🗑️</text>
 					<text class="setting-text">清理缓存</text>
 					<text class="setting-value">{{ cacheSize }}</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item" @click="checkUpdate">
 					<text class="setting-icon">🔄</text>
 					<text class="setting-text">检查更新</text>
 					<text class="setting-value">v{{ appVersion }}</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item" @click="goToFeedback">
 					<text class="setting-icon">💬</text>
 					<text class="setting-text">意见反馈</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 				<view class="setting-item" @click="goToAbout">
 					<text class="setting-icon">ℹ️</text>
 					<text class="setting-text">关于我们</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 			</view>
 		</view>
@@ -132,7 +132,7 @@
 				<view class="setting-item danger" @click="deleteAccount">
 					<text class="setting-icon">⚠️</text>
 					<text class="setting-text">注销账号</text>
-					<text class="setting-arrow">></text>
+					<text class="setting-arrow">›</text>
 				</view>
 			</view>
 		</view>

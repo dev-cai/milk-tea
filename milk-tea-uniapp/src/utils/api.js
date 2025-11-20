@@ -23,11 +23,22 @@ const requestInterceptor = (options) => {
 		})
 	}
 	
+	// 打印请求信息
+	console.log('=== 请求开始 ===')
+	console.log('URL:', options.url)
+	console.log('Method:', options.method)
+	console.log('Data:', options.data)
+	console.log('Header:', options.header)
+	
 	return options
 }
 
 // 响应拦截器
 const responseInterceptor = (response, options) => {
+	console.log('响应拦截器 - 原始响应:', response)
+	console.log('响应拦截器 - statusCode:', response.statusCode)
+	console.log('响应拦截器 - data:', response.data)
+	
 	// 隐藏加载提示
 	if (options.showLoading !== false) {
 		uni.hideLoading()
@@ -37,6 +48,7 @@ const responseInterceptor = (response, options) => {
 	
 	// HTTP状态码处理
 	if (statusCode !== 200) {
+		console.log('HTTP状态码错误:', statusCode)
 		uni.showToast({
 			title: '网络错误',
 			icon: 'none'
@@ -46,6 +58,7 @@ const responseInterceptor = (response, options) => {
 	
 	// 业务状态码处理
 	if (data.code === 401) {
+		console.log('Token过期，跳转登录')
 		// token过期，跳转登录
 		uni.removeStorageSync('token')
 		uni.removeStorageSync('userInfo')
@@ -62,15 +75,13 @@ const responseInterceptor = (response, options) => {
 	}
 	
 	if (data.code !== 200) {
+		console.log('业务状态码错误:', data.code, 'message:', data.message)
 		// 不在这里显示toast，让调用方自己处理
-		// uni.showToast({
-		// 	title: data.msg || data.message || '请求失败',
-		// 	icon: 'none'
-		// })
 		return Promise.reject(data)
 	}
 	
-	return data
+	console.log('响应拦截器 - 返回数据:', data)
+	return Promise.resolve(data)
 }
 
 // 封装请求方法
@@ -93,15 +104,25 @@ const request = (options) => {
 	// 请求拦截
 	options = requestInterceptor(options)
 	
+	console.log('发起请求:', options.url, '参数:', options.data)
+	
 	return new Promise((resolve, reject) => {
 		uni.request({
 			...options,
 			success: (response) => {
+				console.log('请求成功回调:', response)
 				responseInterceptor(response, options)
-					.then(resolve)
-					.catch(reject)
+					.then(data => {
+						console.log('resolve数据:', data)
+						resolve(data)
+					})
+					.catch(error => {
+						console.log('reject错误:', error)
+						reject(error)
+					})
 			},
 			fail: (error) => {
+				console.log('请求失败回调:', error)
 				// 隐藏加载提示
 				if (options.showLoading !== false) {
 					uni.hideLoading()
@@ -139,7 +160,8 @@ const api = {
 		phoneLogin: (data) => request({
 			url: '/auth/phone-login',
 			method: 'POST',
-			data
+			data,
+			showLoading: false  // 在页面中手动控制loading
 		}),
 		
 		// 注册
@@ -153,7 +175,8 @@ const api = {
 		sendCode: (data) => request({
 			url: '/auth/send-code',
 			method: 'POST',
-			data
+			data,
+			showLoading: false  // 发送验证码不显示loading
 		}),
 		
 		// 验证token
@@ -277,15 +300,20 @@ const api = {
 	category: {
 		// 获取分类列表
 		getList: () => request({
-			url: '/admin/category/list',
+			url: '/product/categories',
 			method: 'GET'
 		}),
 		
-		// 获取分类商品
+		// 获取分类商品（使用product/page接口）
 		getProducts: (categoryId, params = {}) => request({
-			url: `/category/${categoryId}/products`,
+			url: '/product/page',
 			method: 'GET',
-			data: params
+			data: {
+				categoryId: categoryId,
+				page: params.page || 1,
+				size: params.pageSize || 20,
+				...params
+			}
 		})
 	},
 	
@@ -377,6 +405,13 @@ const api = {
 			data
 		}),
 		
+		// 支付宝支付
+		alipay: (data) => request({
+			url: '/payment/alipay',
+			method: 'POST',
+			data
+		}),
+		
 		// 余额支付
 		balancePay: (data) => request({
 			url: '/payment/balance-pay',
@@ -388,6 +423,13 @@ const api = {
 		queryStatus: (orderNo) => request({
 			url: `/payment/status/${orderNo}`,
 			method: 'GET'
+		}),
+		
+		// 充值
+		recharge: (data) => request({
+			url: '/payment/recharge',
+			method: 'POST',
+			data
 		})
 	},
 	

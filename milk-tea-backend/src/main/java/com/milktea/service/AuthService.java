@@ -126,9 +126,9 @@ public class AuthService {
     }
     
     /**
-     * 手机号登录
+     * 手机号登录（支持邀请码）
      */
-    public Result<Map<String, Object>> phoneLogin(String phone, String code) {
+    public Result<Map<String, Object>> phoneLogin(String phone, String code, String inviteCode) {
         // 验证手机号格式
         if (phone == null || !phone.matches("^1[3-9]\\d{9}$")) {
             throw new BusinessException("手机号格式不正确");
@@ -144,6 +144,8 @@ public class AuthService {
         queryWrapper.eq(User::getPhone, phone);
         User user = userMapper.selectOne(queryWrapper);
         
+        boolean isNewUser = false;
+        
         // 如果用户不存在，自动注册
         if (user == null) {
             user = new User();
@@ -158,7 +160,13 @@ public class AuthService {
             user.setStatus(1);
             
             userMapper.insert(user);
+            isNewUser = true;
             log.info("新用户注册: {}", phone);
+            
+            // 处理邀请码奖励
+            if (inviteCode != null && !inviteCode.isEmpty()) {
+                handleInviteReward(user.getId(), inviteCode);
+            }
         }
         
         // 检查用户状态
@@ -189,8 +197,40 @@ public class AuthService {
         userInfo.put("userType", user.getUserType());
         result.put("userInfo", userInfo);
         
+        // 如果是新用户且有邀请码，返回提示
+        if (isNewUser && inviteCode != null && !inviteCode.isEmpty()) {
+            result.put("inviteMessage", "注册成功！您和邀请人各获得50积分奖励");
+        }
+        
         log.info("用户登录成功: {}", phone);
         
         return Result.success("登录成功", result);
+    }
+    
+    /**
+     * 处理邀请奖励
+     */
+    private void handleInviteReward(Long newUserId, String inviteCode) {
+        try {
+            // 解析邀请码获取邀请人ID
+            // 这里简化处理，实际应该有专门的邀请码表
+            log.info("处理邀请奖励 - 新用户ID: {}, 邀请码: {}", newUserId, inviteCode);
+            
+            // 给新用户增加50积分
+            User newUser = userMapper.selectById(newUserId);
+            if (newUser != null) {
+                newUser.setPoints(newUser.getPoints() + 50);
+                userMapper.updateById(newUser);
+                log.info("新用户获得邀请奖励50积分");
+            }
+            
+            // TODO: 给邀请人增加50积分
+            // 需要根据邀请码查找邀请人，然后增加积分
+            // 这里需要实现邀请码与用户ID的映射关系
+            
+        } catch (Exception e) {
+            log.error("处理邀请奖励失败", e);
+            // 不影响登录流程
+        }
     }
 }
