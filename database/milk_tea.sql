@@ -945,3 +945,115 @@ INSERT INTO `system_config` (`config_key`, `config_value`, `description`, `type`
 ('system_backup_auto', 'true', '自动备份开关', 3),
 ('system_backup_time', '03:00', '自动备份时间', 1),
 ('system_last_backup', '', '最后备份时间', 1);
+
+
+
+-- 新增接口所需的数据表（简化版）
+-- 执行时间: 2024-11-26
+-- 使用说明：请先选择 milk_tea 数据库，然后执行此脚本
+
+USE `milk_tea`;
+
+-- 1. 积分商品表
+CREATE TABLE IF NOT EXISTS `points_product` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `name` varchar(100) NOT NULL COMMENT '商品名称',
+  `description` varchar(500) DEFAULT NULL COMMENT '商品描述',
+  `image` varchar(255) DEFAULT NULL COMMENT '商品图片',
+  `points` int NOT NULL COMMENT '所需积分',
+  `stock` int NOT NULL DEFAULT '0' COMMENT '库存数量',
+  `exchanged` int NOT NULL DEFAULT '0' COMMENT '已兑换数量',
+  `status` tinyint NOT NULL DEFAULT '1' COMMENT '状态：0-下架，1-上架',
+  `sort` int NOT NULL DEFAULT '0' COMMENT '排序',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '删除标识：0-未删除，1-已删除',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_sort` (`sort`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分商品表';
+
+-- 2. 积分历史表
+CREATE TABLE IF NOT EXISTS `points_history` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `type` varchar(20) NOT NULL COMMENT '积分变化类型：earn-获得，use-使用',
+  `points` int NOT NULL COMMENT '积分数量（正数为获得，负数为使用）',
+  `reason` varchar(200) NOT NULL COMMENT '原因/描述',
+  `order_id` bigint DEFAULT NULL COMMENT '关联订单ID',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '删除标识：0-未删除，1-已删除',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_type` (`type`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='积分历史表';
+
+-- 3. 商品收藏表
+CREATE TABLE IF NOT EXISTS `product_collection` (
+  `id` bigint NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` bigint NOT NULL COMMENT '用户ID',
+  `product_id` bigint NOT NULL COMMENT '商品ID',
+  `deleted` tinyint NOT NULL DEFAULT '0' COMMENT '删除标识：0-未删除，1-已删除',
+  `create_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` datetime NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_product` (`user_id`, `product_id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_product_id` (`product_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci COMMENT='商品收藏表';
+
+-- 4. 插入测试数据 - 积分商品
+INSERT INTO `points_product` (`name`, `description`, `image`, `points`, `stock`, `exchanged`, `status`, `sort`) VALUES
+('珍珠奶茶券', '可兑换任意一杯珍珠奶茶', '/static/points/product1.jpg', 100, 1000, 0, 1, 1),
+('芝士奶盖券', '可兑换任意一杯芝士奶盖', '/static/points/product2.jpg', 150, 800, 0, 1, 2),
+('5元优惠券', '全场通用5元优惠券', '/static/points/product3.jpg', 50, 2000, 0, 1, 3),
+('10元优惠券', '全场通用10元优惠券', '/static/points/product4.jpg', 100, 1500, 0, 1, 4),
+('奶茶杯套', '精美奶茶杯套一个', '/static/points/product5.jpg', 200, 500, 0, 1, 5),
+('品牌帆布袋', '品牌定制帆布袋', '/static/points/product6.jpg', 300, 300, 0, 1, 6);
+
+-- 5. 订单表字段检查
+-- 注意：原始数据库中订单表名为 `orders`，且 finish_time 和 refund_reason 字段已存在
+-- 如果您的订单表名为 `order`，请取消下面的注释并执行
+
+-- ALTER TABLE `order` ADD COLUMN `finish_time` datetime DEFAULT NULL COMMENT '完成时间' AFTER `cancel_time`;
+-- ALTER TABLE `order` ADD COLUMN `refund_reason` varchar(500) DEFAULT NULL COMMENT '退款原因' AFTER `finish_time`;
+
+-- 完成
+SELECT '新增接口数据表创建完成！' AS message;
+SELECT '注意：订单表字段 finish_time 和 refund_reason 已在原始数据库中存在' AS notice;
+
+
+-- 更新商品图片为国内可访问的图片地址
+-- 使用 picsum.photos (国内可访问的随机图片服务)
+
+USE milk_tea;
+
+-- 更新商品表的图片地址
+-- 使用 picsum.photos 提供的随机图片
+UPDATE product SET image = 'https://picsum.photos/400/400?random=1' WHERE id = 1;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=2' WHERE id = 2;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=3' WHERE id = 3;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=4' WHERE id = 4;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=5' WHERE id = 5;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=6' WHERE id = 6;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=7' WHERE id = 7;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=8' WHERE id = 8;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=9' WHERE id = 9;
+UPDATE product SET image = 'https://picsum.photos/400/400?random=10' WHERE id = 10;
+
+-- 更新轮播图
+UPDATE banner SET image = 'https://picsum.photos/750/300?random=11' WHERE id = 1;
+UPDATE banner SET image = 'https://picsum.photos/750/300?random=12' WHERE id = 2;
+UPDATE banner SET image = 'https://picsum.photos/750/300?random=13' WHERE id = 3;
+
+-- 更新积分商品图片
+UPDATE points_product SET image = 'https://picsum.photos/300/300?random=21' WHERE id = 1;
+UPDATE points_product SET image = 'https://picsum.photos/300/300?random=22' WHERE id = 2;
+UPDATE points_product SET image = 'https://picsum.photos/300/300?random=23' WHERE id = 3;
+UPDATE points_product SET image = 'https://picsum.photos/300/300?random=24' WHERE id = 4;
+UPDATE points_product SET image = 'https://picsum.photos/300/300?random=25' WHERE id = 5;
+UPDATE points_product SET image = 'https://picsum.photos/300/300?random=26' WHERE id = 6;
+
+SELECT '商品图片已更新为在线地址！' AS message;

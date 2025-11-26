@@ -27,7 +27,21 @@ public class User {
     
     private String phone;
     
+    private String openid;
+    
+    private Integer gender;
+    
+    private String birthday;
+    
     private Integer memberLevel;
+    
+    private String memberNo;
+    
+    private String inviteCode;
+    
+    private Long inviterId;
+    
+    private LocalDateTime inviteTime;
     
     private Integer points;
     

@@ -8,14 +8,14 @@ import com.milktea.entity.Category;
 import com.milktea.entity.Product;
 import com.milktea.exception.BusinessException;
 import com.milktea.mapper.CategoryMapper;
+import com.milktea.mapper.OrderItemMapper;
 import com.milktea.mapper.ProductMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
+import java.util.*;
+import java.util.stream.Collectors;
 
 /**
  * 商品服务类
@@ -27,16 +27,18 @@ public class ProductService {
     
     private final ProductMapper productMapper;
     private final CategoryMapper categoryMapper;
+    private final OrderItemMapper orderItemMapper;
     
-    public ProductService(ProductMapper productMapper, CategoryMapper categoryMapper) {
+    public ProductService(ProductMapper productMapper, CategoryMapper categoryMapper, OrderItemMapper orderItemMapper) {
         this.productMapper = productMapper;
         this.categoryMapper = categoryMapper;
+        this.orderItemMapper = orderItemMapper;
     }
     
     /**
      * 分页查询商品（用户端）
      */
-    public Result<PageResult<Product>> getProductPage(Integer page, Integer size, Long categoryId, String keyword) {
+    public Result<PageResult<Product>> getProductPage(Integer page, Integer size, Long categoryId, String keyword, String sortType, String sortOrder) {
         Page<Product> pageObj = new Page<>(page, size);
         
         LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
@@ -53,8 +55,42 @@ public class ProductService {
                        .like(Product::getDescription, keyword);
         }
         
-        queryWrapper.orderByDesc(Product::getSort)
-                   .orderByDesc(Product::getCreateTime);
+        // 处理排序
+        if (StringUtils.hasText(sortType)) {
+            boolean isAsc = "asc".equalsIgnoreCase(sortOrder);
+            switch (sortType) {
+                case "sales":
+                    // 按销量排序
+                    if (isAsc) {
+                        queryWrapper.orderByAsc(Product::getSales);
+                    } else {
+                        queryWrapper.orderByDesc(Product::getSales);
+                    }
+                    break;
+                case "price":
+                    // 按价格排序
+                    if (isAsc) {
+                        queryWrapper.orderByAsc(Product::getPrice);
+                    } else {
+                        queryWrapper.orderByDesc(Product::getPrice);
+                    }
+                    break;
+                case "rating":
+                    // 按评分排序（暂时按销量代替）
+                    queryWrapper.orderByDesc(Product::getSales);
+                    break;
+                default:
+                    // 默认排序：综合排序
+                    queryWrapper.orderByDesc(Product::getIsRecommend)
+                               .orderByDesc(Product::getSort)
+                               .orderByDesc(Product::getSales);
+                    break;
+            }
+        } else {
+            // 默认排序
+            queryWrapper.orderByDesc(Product::getSort)
+                       .orderByDesc(Product::getCreateTime);
+        }
         
         Page<Product> result = productMapper.selectPage(pageObj, queryWrapper);
         
@@ -198,6 +234,83 @@ public class ProductService {
         
         List<Product> products = productMapper.selectList(queryWrapper);
         return Result.success("获取成功", products);
+    }
+    
+    /**
+     * 获取个性化推荐商品
+     * 基于用户购买历史推荐同类商品，如果没有购买记录则返回热销商品
+     */
+    public Result<List<Product>> getPersonalizedProducts(Long userId, Integer limit) {
+        try {
+            // 1. 查询用户购买过的商品ID列表
+            List<Long> purchasedProductIds = orderItemMapper.selectPurchasedProductIdsByUserId(userId);
+            
+            if (purchasedProductIds == null || purchasedProductIds.isEmpty()) {
+                // 没有购买记录，返回热销商品
+                log.info("用户{}没有购买记录，返回热销商品", userId);
+                return getHotProducts(limit);
+            }
+            
+            // 2. 查询用户购买过的商品详情，获取分类信息
+            List<Product> purchasedProducts = productMapper.selectBatchIds(purchasedProductIds);
+            
+            // 3. 统计用户购买最多的分类
+            Map<Long, Long> categoryCountMap = purchasedProducts.stream()
+                .filter(p -> p.getCategoryId() != null)
+                .collect(Collectors.groupingBy(Product::getCategoryId, Collectors.counting()));
+            
+            // 4. 按购买次数排序，获取最喜欢的分类
+            List<Long> favoriteCategories = categoryCountMap.entrySet().stream()
+                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+                .map(Map.Entry::getKey)
+                .limit(3) // 取前3个最喜欢的分类
+                .collect(Collectors.toList());
+            
+            // 5. 从这些分类中推荐商品（排除已购买的）
+            LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(Product::getStatus, 1)
+                       .in(Product::getCategoryId, favoriteCategories)
+                       .notIn(Product::getId, purchasedProductIds) // 排除已购买的商品
+                       .orderByDesc(Product::getSales)
+                       .orderByDesc(Product::getSort)
+                       .last("LIMIT " + limit);
+            
+            List<Product> recommendedProducts = productMapper.selectList(queryWrapper);
+            
+            // 6. 如果推荐的商品不够，补充热销商品
+            if (recommendedProducts.size() < limit) {
+                int remaining = limit - recommendedProducts.size();
+                LambdaQueryWrapper<Product> hotWrapper = new LambdaQueryWrapper<>();
+                hotWrapper.eq(Product::getStatus, 1)
+                         .notIn(Product::getId, purchasedProductIds)
+                         .orderByDesc(Product::getSales)
+                         .last("LIMIT " + remaining);
+                
+                List<Product> hotProducts = productMapper.selectList(hotWrapper);
+                
+                // 合并结果，去重
+                Set<Long> existingIds = recommendedProducts.stream()
+                    .map(Product::getId)
+                    .collect(Collectors.toSet());
+                
+                for (Product product : hotProducts) {
+                    if (!existingIds.contains(product.getId())) {
+                        recommendedProducts.add(product);
+                        if (recommendedProducts.size() >= limit) {
+                            break;
+                        }
+                    }
+                }
+            }
+            
+            log.info("为用户{}推荐了{}个商品", userId, recommendedProducts.size());
+            return Result.success("获取成功", recommendedProducts);
+            
+        } catch (Exception e) {
+            log.error("获取个性化推荐失败，返回热销商品", e);
+            // 出错时返回热销商品
+            return getHotProducts(limit);
+        }
     }
     
     /**
@@ -402,5 +515,29 @@ public class ProductService {
             log.error("获取库存统计失败", e);
             return Result.error("获取库存统计失败");
         }
+    }
+    
+    /**
+     * 收藏商品（暂不实现，需要添加 ProductCollectionMapper 依赖）
+     */
+    public Result<String> collectProduct(Long productId, Long userId) {
+        // TODO: 需要在构造函数中注入 ProductCollectionMapper
+        return Result.error("收藏功能暂未实现");
+    }
+    
+    /**
+     * 取消收藏（暂不实现，需要添加 ProductCollectionMapper 依赖）
+     */
+    public Result<String> uncollectProduct(Long productId, Long userId) {
+        // TODO: 需要在构造函数中注入 ProductCollectionMapper
+        return Result.error("取消收藏功能暂未实现");
+    }
+    
+    /**
+     * 获取收藏列表（暂不实现，需要添加 ProductCollectionMapper 依赖）
+     */
+    public Result<List<Product>> getCollections(Long userId) {
+        // TODO: 需要在构造函数中注入 ProductCollectionMapper
+        return Result.error("获取收藏列表功能暂未实现");
     }
 }

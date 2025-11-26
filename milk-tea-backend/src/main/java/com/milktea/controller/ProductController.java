@@ -33,8 +33,10 @@ public class ProductController {
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
             @RequestParam(required = false) Long categoryId,
-            @RequestParam(required = false) String keyword) {
-        return productService.getProductPage(page, size, categoryId, keyword);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) String sortType,
+            @RequestParam(required = false) String sortOrder) {
+        return productService.getProductPage(page, size, categoryId, keyword, sortType, sortOrder);
     }
     
     /**
@@ -68,4 +70,17 @@ public class ProductController {
     public Result<List<Category>> getCategories() {
         return productService.getCategories();
     }
+    
+    /**
+     * 获取个性化推荐商品
+     * 基于用户购买历史推荐同类商品，如果没有购买记录则返回热销商品
+     */
+    @GetMapping("/personalized")
+    public Result<List<Product>> getPersonalizedProducts(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "10") Integer limit) {
+        log.info("获取个性化推荐商品，userId: {}, limit: {}", userId, limit);
+        return productService.getPersonalizedProducts(userId, limit);
+    }
+    
 }

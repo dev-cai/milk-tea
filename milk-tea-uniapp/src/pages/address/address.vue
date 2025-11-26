@@ -37,7 +37,7 @@
 
 		<!-- 空状态 -->
 		<view class="empty-state" v-else>
-			<text class="empty-icon">📍</text>
+			<text class="empty-icon">�</text>
 			<text class="empty-text">还没有收货地址</text>
 			<text class="empty-desc">添加地址后可以快速下单</text>
 		</view>

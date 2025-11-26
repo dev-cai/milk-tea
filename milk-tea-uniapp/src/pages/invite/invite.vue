@@ -8,12 +8,24 @@
 			</view>
 		</view>
 
+		<!-- 填写邀请码提示 -->
+		<view class="bind-invite-tip" v-if="!userInfo.inviterId" @click="openBindDialog">
+			<view class="tip-icon-box">
+				<u-icon name="gift" size="24" color="#ff6b35"></u-icon>
+			</view>
+			<view class="tip-content">
+				<text class="tip-title">填写邀请码</text>
+				<text class="tip-desc">填写好友邀请码，立得50积分</text>
+			</view>
+			<u-icon name="arrow-right" size="18" color="#ff8f00"></u-icon>
+		</view>
+
 		<!-- 邀请码卡片 -->
 		<view class="invite-card">
 			<view class="card-header">
 				<text class="card-title">我的邀请码</text>
 				<view class="reward-badge">
-					<text class="reward-icon">🎁</text>
+					<u-icon name="integral" size="16" color="#fff"></u-icon>
 					<text class="reward-text">双方各得50积分</text>
 				</view>
 			</view>
@@ -24,24 +36,17 @@
 				</view>
 				<view class="code-actions">
 					<view class="action-btn" @click="copyInviteCode">
-						<text class="btn-icon">📋</text>
+						<u-icon name="file-text" size="20" color="#666"></u-icon>
 						<text class="btn-text">复制</text>
 					</view>
 					<view class="action-btn primary" @click="shareInvite">
-						<text class="btn-icon">📤</text>
+						<u-icon name="share" size="20" color="#fff"></u-icon>
 						<text class="btn-text">分享</text>
 					</view>
 				</view>
 			</view>
 
-			<!-- 邀请链接 -->
-			<view class="invite-link-section">
-				<text class="link-label">邀请链接</text>
-				<view class="link-display">
-					<text class="link-text">{{ inviteLink }}</text>
-					<text class="link-copy" @click="copyInviteLink">复制</text>
-				</view>
-			</view>
+
 		</view>
 
 		<!-- 邀请统计 -->
@@ -72,36 +77,28 @@
 			</view>
 			<view class="rules-list">
 				<view class="rule-item">
-					<view class="rule-icon">
-						<text>1️⃣</text>
-					</view>
+					<view class="rule-number">1</view>
 					<view class="rule-content">
 						<text class="rule-title">邀请注册</text>
 						<text class="rule-desc">好友通过您的邀请码注册，双方各得50积分</text>
 					</view>
 				</view>
 				<view class="rule-item">
-					<view class="rule-icon">
-						<text>2️⃣</text>
-					</view>
+					<view class="rule-number">2</view>
 					<view class="rule-content">
 						<text class="rule-title">首单奖励</text>
 						<text class="rule-desc">好友完成首单，您额外获得100积分</text>
 					</view>
 				</view>
 				<view class="rule-item">
-					<view class="rule-icon">
-						<text>3️⃣</text>
-					</view>
+					<view class="rule-number">3</view>
 					<view class="rule-content">
 						<text class="rule-title">持续奖励</text>
 						<text class="rule-desc">好友每次消费，您可获得其消费金额5%的积分</text>
 					</view>
 				</view>
 				<view class="rule-item">
-					<view class="rule-icon">
-						<text>4️⃣</text>
-					</view>
+					<view class="rule-number">4</view>
 					<view class="rule-content">
 						<text class="rule-title">优惠券奖励</text>
 						<text class="rule-desc">邀请满5人，赠送20元优惠券</text>
@@ -135,11 +132,42 @@
 				</view>
 			</view>
 			<view class="records-empty" v-else>
-				<text class="empty-icon">👥</text>
+				<u-icon name="account" size="80" color="#ddd"></u-icon>
 				<text class="empty-text">还没有邀请记录</text>
 				<text class="empty-desc">快去邀请好友吧</text>
 			</view>
 		</view>
+
+		<!-- 填写邀请码弹窗 -->
+		<u-popup :show="showBindDialog" @close="showBindDialog = false" mode="center" :round="20">
+			<view class="bind-dialog">
+				<view class="dialog-header">
+					<text class="dialog-title">填写邀请码</text>
+					<u-icon name="close" @click="showBindDialog = false"></u-icon>
+				</view>
+				<view class="dialog-content">
+					<text class="dialog-desc">填写好友的邀请码，双方各得50积分</text>
+					<input 
+						class="invite-input" 
+						v-model="inputInviteCode" 
+						placeholder="请输入6位邀请码"
+						maxlength="6"
+						:adjust-position="false"
+					/>
+					<view class="dialog-tip">
+						<text>💡 每个账号只能填写一次邀请码</text>
+					</view>
+				</view>
+				<view class="dialog-actions">
+					<view class="dialog-btn cancel" @click="showBindDialog = false">
+						<text>取消</text>
+					</view>
+					<view class="dialog-btn confirm" @click="bindInviteCode">
+						<text>确认</text>
+					</view>
+				</view>
+			</view>
+		</u-popup>
 
 		<!-- 分享海报弹窗 -->
 		<view class="poster-modal" v-if="showPoster" @click="closePoster">
@@ -173,14 +201,15 @@ export default {
 		return {
 			userInfo: {},
 			inviteCode: '',
-			inviteLink: '',
 			inviteStats: {
 				totalInvites: 0,
 				successInvites: 0,
 				totalRewards: 0
 			},
 			inviteRecords: [],
-			showPoster: false
+			showPoster: false,
+			showBindDialog: false,
+			inputInviteCode: ''
 		}
 	},
 	
@@ -193,14 +222,14 @@ export default {
 		formatTime,
 		
 		// 加载用户信息
-		loadUserInfo() {
+		async loadUserInfo() {
 			const userInfo = uni.getStorageSync('userInfo')
 			if (userInfo) {
 				this.userInfo = userInfo
-				// 生成邀请码（使用用户ID）
-				this.inviteCode = this.generateInviteCode(userInfo.id)
-				// 生成邀请链接
-				this.inviteLink = `https://your-domain.com/register?code=${this.inviteCode}`
+				// 从后端获取完整用户信息（包含inviterId）
+				await this.loadFullUserInfo()
+				// 从后端获取邀请码
+				await this.loadInviteCode()
 			} else {
 				uni.showToast({
 					title: '请先登录',
@@ -209,6 +238,93 @@ export default {
 				setTimeout(() => {
 					uni.navigateBack()
 				}, 1500)
+			}
+		},
+		
+		// 获取完整用户信息
+		async loadFullUserInfo() {
+			try {
+				const res = await api.user.getInfo(this.userInfo.id)
+				if (res.code === 200 && res.data) {
+					// 更新userInfo，特别是inviterId字段
+					this.userInfo = {
+						...this.userInfo,
+						...res.data
+					}
+					// 同时更新本地存储
+					uni.setStorageSync('userInfo', this.userInfo)
+				}
+			} catch (error) {
+				console.error('获取用户信息失败:', error)
+			}
+		},
+		
+		// 获取邀请码
+		async loadInviteCode() {
+			try {
+				const res = await api.invite.getCode(this.userInfo.id)
+				if (res.code === 200) {
+					this.inviteCode = res.data
+				}
+			} catch (error) {
+				console.error('获取邀请码失败:', error)
+				// 使用临时邀请码
+				this.inviteCode = this.generateInviteCode(this.userInfo.id)
+			}
+		},
+		
+		// 打开填写邀请码对话框
+		openBindDialog() {
+			console.log('点击了填写邀请码提示')
+			console.log('userInfo.inviterId:', this.userInfo.inviterId)
+			console.log('showBindDialog 设置为 true')
+			this.showBindDialog = true
+			console.log('showBindDialog 当前值:', this.showBindDialog)
+		},
+		
+		// 绑定邀请码
+		async bindInviteCode() {
+			if (!this.inputInviteCode) {
+				uni.showToast({
+					title: '请输入邀请码',
+					icon: 'none'
+				})
+				return
+			}
+			
+			if (this.inputInviteCode.length !== 6) {
+				uni.showToast({
+					title: '邀请码格式不正确',
+					icon: 'none'
+				})
+				return
+			}
+			
+			try {
+				const res = await api.invite.bind(this.userInfo.id, this.inputInviteCode)
+				if (res.code === 200) {
+					uni.showToast({
+						title: '绑定成功',
+						icon: 'success'
+					})
+					this.showBindDialog = false
+					this.inputInviteCode = ''
+					// 重新加载用户信息
+					await this.loadFullUserInfo()
+					// 刷新数据
+					this.loadInviteData()
+				} else {
+					uni.showToast({
+						title: res.message || '绑定失败',
+						icon: 'none'
+					})
+				}
+			} catch (error) {
+				console.error('绑定邀请码失败:', error)
+				uni.showToast({
+					title: error.message || '绑定失败',
+					icon: 'none'
+				})
 			}
 		},
 		
@@ -249,39 +365,25 @@ export default {
 		// 加载邀请记录
 		async loadInviteRecords() {
 			try {
-				// 调用后端API获取邀请记录
-				// const res = await api.member.getInviteRecords(this.userInfo.id)
-				// this.inviteRecords = res.data || []
-				
-				// 使用模拟数据
-				this.inviteRecords = [
-					{
-						id: 1,
-						nickname: '用户8000',
-						avatar: 'https://via.placeholder.com/100x100/FFB6C1/FFFFFF?text=User1',
-						registerTime: '2025-11-18 10:30:00',
-						status: 'completed',
-						reward: 50
-					},
-					{
-						id: 2,
-						nickname: '用户8001',
-						avatar: 'https://via.placeholder.com/100x100/87CEEB/FFFFFF?text=User2',
-						registerTime: '2025-11-17 15:20:00',
-						status: 'completed',
-						reward: 50
-					},
-					{
-						id: 3,
-						nickname: '用户8002',
-						avatar: 'https://via.placeholder.com/100x100/98FB98/FFFFFF?text=User3',
-						registerTime: '2025-11-16 09:15:00',
-						status: 'pending',
-						reward: 0
-					}
-				]
+				const res = await api.invite.getMyInvites(this.userInfo.id)
+				if (res.code === 200) {
+					this.inviteRecords = (res.data || []).map(record => ({
+						id: record.id,
+						nickname: `用户${record.inviteeId}`,
+						avatar: '',
+						registerTime: record.createTime,
+						status: record.status === 2 ? 'completed' : (record.status === 1 ? 'registered' : 'pending'),
+						reward: record.points || 0
+					}))
+					
+					// 更新统计数据
+					this.inviteStats.totalInvites = this.inviteRecords.length
+					this.inviteStats.successInvites = this.inviteRecords.filter(r => r.status === 'completed').length
+					this.inviteStats.totalRewards = this.inviteRecords.reduce((sum, r) => sum + r.reward, 0)
+				}
 			} catch (error) {
 				console.error('加载邀请记录失败:', error)
+				this.inviteRecords = []
 			}
 		},
 		
@@ -298,18 +400,7 @@ export default {
 			})
 		},
 		
-		// 复制邀请链接
-		copyInviteLink() {
-			uni.setClipboardData({
-				data: this.inviteLink,
-				success: () => {
-					uni.showToast({
-						title: '链接已复制',
-						icon: 'success'
-					})
-				}
-			})
-		},
+
 		
 		// 分享邀请
 		shareInvite() {
@@ -419,6 +510,127 @@ export default {
 	opacity: 0.9;
 }
 
+/* 填写邀请码提示 */
+.bind-invite-tip {
+	margin: 0 30rpx 20rpx;
+	background: linear-gradient(135deg, #fff3e0 0%, #ffe0b2 100%);
+	border-radius: 16rpx;
+	padding: 24rpx 30rpx;
+	display: flex;
+	align-items: center;
+	box-shadow: 0 4rpx 16rpx rgba(255, 152, 0, 0.15);
+	position: relative;
+	z-index: 10;
+	cursor: pointer;
+}
+
+.tip-icon-box {
+	width: 48rpx;
+	height: 48rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-right: 20rpx;
+}
+
+.tip-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
+.tip-title {
+	font-size: 28rpx;
+	font-weight: 600;
+	color: #ff6b00;
+	margin-bottom: 4rpx;
+}
+
+.tip-desc {
+	font-size: 24rpx;
+	color: #ff8f00;
+}
+
+
+
+/* 填写邀请码弹窗 */
+.bind-dialog {
+	width: 600rpx;
+	background: white;
+	border-radius: 24rpx;
+	overflow: hidden;
+}
+
+.dialog-header {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	padding: 40rpx;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.dialog-title {
+	font-size: 32rpx;
+	font-weight: 600;
+	color: #333;
+}
+
+.dialog-content {
+	padding: 40rpx;
+}
+
+.dialog-desc {
+	display: block;
+	font-size: 26rpx;
+	color: #666;
+	margin-bottom: 30rpx;
+	text-align: center;
+}
+
+.invite-input {
+	width: 100%;
+	height: 88rpx;
+	background: #f5f5f5;
+	border-radius: 12rpx;
+	padding: 0 30rpx;
+	font-size: 32rpx;
+	font-weight: 600;
+	text-align: center;
+	letter-spacing: 8rpx;
+	color: #333;
+}
+
+.dialog-tip {
+	margin-top: 20rpx;
+	text-align: center;
+	font-size: 22rpx;
+	color: #999;
+}
+
+.dialog-actions {
+	display: flex;
+	border-top: 1rpx solid #f0f0f0;
+}
+
+.dialog-btn {
+	flex: 1;
+	height: 100rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	font-size: 30rpx;
+	font-weight: 600;
+}
+
+.dialog-btn.cancel {
+	color: #999;
+	border-right: 1rpx solid #f0f0f0;
+}
+
+.dialog-btn.confirm {
+	color: #ff6b35;
+}
+
 /* 邀请码卡片 */
 .invite-card {
 	margin: 0 30rpx 30rpx;
@@ -449,10 +661,7 @@ export default {
 	border-radius: 20rpx;
 }
 
-.reward-icon {
-	font-size: 24rpx;
-	margin-right: 8rpx;
-}
+
 
 .reward-text {
 	font-size: 22rpx;
@@ -500,57 +709,16 @@ export default {
 	background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
 }
 
-.action-btn.primary .btn-icon,
 .action-btn.primary .btn-text {
 	color: white;
 }
 
-.btn-icon {
-	font-size: 32rpx;
-	margin-right: 8rpx;
-}
+
 
 .btn-text {
 	font-size: 28rpx;
 	font-weight: 600;
 	color: #666;
-}
-
-/* 邀请链接 */
-.invite-link-section {
-	padding-top: 30rpx;
-	border-top: 1rpx solid #f0f0f0;
-}
-
-.link-label {
-	display: block;
-	font-size: 24rpx;
-	color: #999;
-	margin-bottom: 16rpx;
-}
-
-.link-display {
-	display: flex;
-	align-items: center;
-	background: #f5f5f5;
-	padding: 20rpx;
-	border-radius: 12rpx;
-}
-
-.link-text {
-	flex: 1;
-	font-size: 24rpx;
-	color: #666;
-	overflow: hidden;
-	text-overflow: ellipsis;
-	white-space: nowrap;
-}
-
-.link-copy {
-	font-size: 26rpx;
-	color: #ff6b35;
-	font-weight: 600;
-	margin-left: 20rpx;
 }
 
 /* 统计区域 */
@@ -623,9 +791,19 @@ export default {
 	align-items: flex-start;
 }
 
-.rule-icon {
-	font-size: 40rpx;
+.rule-number {
+	width: 48rpx;
+	height: 48rpx;
+	background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+	border-radius: 50%;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	color: white;
+	font-size: 28rpx;
+	font-weight: 600;
 	margin-right: 20rpx;
+	flex-shrink: 0;
 }
 
 .rule-content {
@@ -739,11 +917,7 @@ export default {
 	padding: 80rpx 0;
 }
 
-.empty-icon {
-	font-size: 120rpx;
-	margin-bottom: 20rpx;
-	opacity: 0.3;
-}
+
 
 .empty-text {
 	font-size: 28rpx;

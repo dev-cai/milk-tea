@@ -245,4 +245,41 @@ public class MarketingActivityService {
             return Result.error("获取失败");
         }
     }
+    
+    /**
+     * 获取启用的活动列表（用户端）
+     */
+    public List<MarketingActivity> getActiveList() {
+        LambdaQueryWrapper<MarketingActivity> wrapper = new LambdaQueryWrapper<>();
+        wrapper.eq(MarketingActivity::getStatus, 1);
+        wrapper.orderByDesc(MarketingActivity::getCreateTime);
+        return activityMapper.selectList(wrapper);
+    }
+    
+    /**
+     * 根据ID获取活动
+     */
+    public MarketingActivity getById(Long id) {
+        return activityMapper.selectById(id);
+    }
+    
+    /**
+     * 参与活动
+     */
+    public void joinActivity(Long activityId, Long userId) {
+        MarketingActivity activity = activityMapper.selectById(activityId);
+        if (activity == null) {
+            throw new BusinessException("活动不存在");
+        }
+        
+        if (activity.getStatus() != 1) {
+            throw new BusinessException("活动未开始或已结束");
+        }
+        
+        // 增加参与人数
+        activity.setParticipants(activity.getParticipants() + 1);
+        activityMapper.updateById(activity);
+        
+        log.info("用户参与活动成功: userId={}, activityId={}", userId, activityId);
+    }
 }

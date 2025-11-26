@@ -39,11 +39,13 @@
 						</view>
 					</view>
 				</view>
-				<view class="info-item" @click="editBirthday">
-					<text class="info-label">生日</text>
-					<text class="info-value">{{ userInfo.birthday || '未设置' }}</text>
-					<text class="info-arrow">›</text>
-				</view>
+				<picker mode="date" :value="userInfo.birthday || '2000-01-01'" @change="onBirthdayChange">
+					<view class="info-item">
+						<text class="info-label">生日</text>
+						<text class="info-value">{{ userInfo.birthday || '未设置' }}</text>
+						<text class="info-arrow">›</text>
+					</view>
+				</picker>
 			</view>
 		</view>
 
@@ -56,21 +58,18 @@
 				<view class="contact-item">
 					<text class="contact-label">手机号</text>
 					<text class="contact-value">{{ formatPhone(userInfo.phone) }}</text>
-					<view class="contact-status" :class="{ verified: userInfo.phoneVerified }">
-						<text>{{ userInfo.phoneVerified ? '已验证' : '未验证' }}</text>
+					<view class="contact-status verified">
+						<text>已验证</text>
 					</view>
-					<text class="contact-action" @click="bindPhone">
-						{{ userInfo.phone ? '更换' : '绑定' }}
-					</text>
 				</view>
-				<view class="contact-item">
+				<view class="contact-item" @click="handleWechatBind">
 					<text class="contact-label">微信</text>
-					<text class="contact-value">{{ userInfo.wechatNickname || '未绑定' }}</text>
-					<view class="contact-status" :class="{ verified: userInfo.wechatBound }">
-						<text>{{ userInfo.wechatBound ? '已绑定' : '未绑定' }}</text>
+					<text class="contact-value">{{ userInfo.openid ? '已绑定' : '未绑定' }}</text>
+					<view class="contact-status" :class="{ verified: userInfo.openid }">
+						<text>{{ userInfo.openid ? '已绑定' : '未绑定' }}</text>
 					</view>
-					<text class="contact-action" @click="bindWechat">
-						{{ userInfo.wechatBound ? '解绑' : '绑定' }}
+					<text class="contact-action">
+						{{ userInfo.openid ? '解绑' : '绑定' }}
 					</text>
 				</view>
 			</view>
@@ -105,16 +104,20 @@
 				<text class="section-title">账户安全</text>
 			</view>
 			<view class="security-list">
-				<view class="security-item" @click="changePassword">
+				<view class="security-item" @click="showChangePasswordModal">
 					<text class="security-icon">🔒</text>
-					<text class="security-text">修改密码</text>
-					<text class="security-desc">定期更换密码保护账户安全</text>
+					<view class="security-content">
+						<text class="security-text">修改密码</text>
+						<text class="security-desc">定期更换密码保护账户安全</text>
+					</view>
 					<text class="security-arrow">›</text>
 				</view>
 				<view class="security-item" @click="showLoginHistory">
 					<text class="security-icon">📱</text>
-					<text class="security-text">登录记录</text>
-					<text class="security-desc">查看最近登录设备和时间</text>
+					<view class="security-content">
+						<text class="security-text">登录记录</text>
+						<text class="security-desc">查看最近登录设备和时间</text>
+					</view>
 					<text class="security-arrow">›</text>
 				</view>
 			</view>
@@ -148,15 +151,77 @@
 			</view>
 		</view>
 
-		<!-- 生日选择器 -->
-		<picker 
-			mode="date" 
-			:value="userInfo.birthday" 
-			@change="onBirthdayChange"
-			:disabled="false"
-			ref="birthdayPicker"
-		>
-		</picker>
+		<!-- 修改密码弹窗 -->
+		<view class="password-modal" :class="{ show: showPasswordModal }" @click="hidePasswordModal">
+			<view class="modal-content" @click.stop>
+				<view class="modal-header">
+					<text class="modal-title">修改密码</text>
+					<text class="modal-close" @click="hidePasswordModal">✕</text>
+				</view>
+				<view class="modal-body">
+					<input 
+						class="password-input" 
+						type="password" 
+						placeholder="请输入旧密码" 
+						v-model="oldPassword"
+					/>
+					<input 
+						class="password-input" 
+						type="password" 
+						placeholder="请输入新密码" 
+						v-model="newPassword"
+					/>
+					<input 
+						class="password-input" 
+						type="password" 
+						placeholder="请确认新密码" 
+						v-model="confirmPassword"
+					/>
+					<text class="input-tip">密码长度为6-20个字符</text>
+				</view>
+				<view class="modal-footer">
+					<view class="modal-btn cancel" @click="hidePasswordModal">
+						<text>取消</text>
+					</view>
+					<view class="modal-btn confirm" @click="savePassword">
+						<text>确定</text>
+					</view>
+				</view>
+			</view>
+		</view>
+
+		<!-- 登录记录弹窗 -->
+		<view class="login-history-modal" :class="{ show: showLoginHistoryModal }" @click="hideLoginHistoryModal">
+			<view class="modal-content history-content" @click.stop>
+				<view class="modal-header">
+					<text class="modal-title">登录记录</text>
+					<text class="modal-close" @click="hideLoginHistoryModal">✕</text>
+				</view>
+				<view class="modal-body">
+					<view v-if="loginHistory.length === 0" class="empty-history">
+						<text class="empty-icon">📝</text>
+						<text class="empty-text">暂无登录记录</text>
+					</view>
+					<view v-else class="history-list">
+						<view class="history-item" v-for="(item, index) in loginHistory" :key="index">
+							<view class="history-info">
+								<text class="history-device">{{ item.device }}</text>
+								<text class="history-time">{{ item.loginTime }}</text>
+							</view>
+							<view class="history-location">
+								<text>{{ item.location || '未知位置' }}</text>
+							</view>
+						</view>
+					</view>
+				</view>
+				<view class="modal-footer single">
+					<view class="modal-btn confirm full" @click="hideLoginHistoryModal">
+						<text>关闭</text>
+					</view>
+				</view>
+			</view>
+		</view>
+
 	</view>
 </template>
 
@@ -170,7 +235,13 @@ export default {
 			userInfo: {},
 			showNicknameModal: false,
 			tempNickname: '',
-			showBirthdayPicker: false
+			showBirthdayPicker: false,
+			showPasswordModal: false,
+			oldPassword: '',
+			newPassword: '',
+			confirmPassword: '',
+			showLoginHistoryModal: false,
+			loginHistory: []
 		}
 	},
 	onLoad() {
@@ -184,36 +255,24 @@ export default {
 		async loadUserInfo() {
 			try {
 				const userInfo = uni.getStorageSync('userInfo')
-				if (userInfo) {
-					this.userInfo = userInfo
-				}
-
-				// 从服务器获取最新信息
 				if (userInfo && userInfo.id) {
-					const res = await api.user.getInfo(userInfo.id)
-					if (res.code === 200) {
-						this.userInfo = res.data
-						uni.setStorageSync('userInfo', this.userInfo)
+					// 先显示本地数据
+					this.userInfo = { ...userInfo }
+					
+					// 从服务器获取最新信息
+					try {
+						const res = await api.user.getInfo(userInfo.id)
+						if (res.code === 200 && res.data) {
+							this.userInfo = { ...res.data }
+							uni.setStorageSync('userInfo', this.userInfo)
+							console.log('个人信息页 - 更新用户信息:', this.userInfo)
+						}
+					} catch (apiError) {
+						console.error('从服务器获取用户信息失败，使用本地数据:', apiError)
 					}
 				}
 			} catch (error) {
 				console.error('加载用户信息失败:', error)
-				// 使用模拟数据
-				this.userInfo = {
-					id: 1,
-					nickname: '奶茶爱好者',
-					avatar: 'https://via.placeholder.com/200x200/CCCCCC/666666?text=Avatar',
-					gender: 1,
-					birthday: '1990-01-01',
-					phone: '13800138000',
-					phoneVerified: true,
-					wechatNickname: '微信用户',
-					wechatBound: true,
-					memberLevel: 1,
-					memberNo: 'MT202411130001',
-					points: 1250,
-					balance: 68.50
-				}
 			}
 		},
 
@@ -289,26 +348,33 @@ export default {
 			}
 
 			try {
-				// 这里应该调用API更新昵称
-				// await api.user.updateNickname(nickname)
+				uni.showLoading({ title: '保存中...' })
 				
-				this.userInfo.nickname = nickname
-				uni.setStorageSync('userInfo', this.userInfo)
-				
-				this.hideNicknameModal()
-				uni.showToast({
-					title: '昵称更新成功',
-					icon: 'success'
+				// 调用API更新昵称
+				const res = await api.user.updateInfo({
+					id: this.userInfo.id,
+					nickname: nickname
 				})
+				
+				if (res.code === 200) {
+					this.userInfo.nickname = nickname
+					uni.setStorageSync('userInfo', this.userInfo)
+					
+					this.hideNicknameModal()
+					uni.hideLoading()
+					uni.showToast({
+						title: '昵称更新成功',
+						icon: 'success'
+					})
+				} else {
+					throw new Error(res.message || '更新失败')
+				}
 			} catch (error) {
 				console.error('更新昵称失败:', error)
-				// 模拟更新成功
-				this.userInfo.nickname = nickname
-				uni.setStorageSync('userInfo', this.userInfo)
-				this.hideNicknameModal()
+				uni.hideLoading()
 				uni.showToast({
-					title: '昵称更新成功',
-					icon: 'success'
+					title: '更新失败',
+					icon: 'none'
 				})
 			}
 		},
@@ -318,37 +384,39 @@ export default {
 			if (this.userInfo.gender === gender) return
 
 			try {
-				// 这里应该调用API更新性别
-				// await api.user.updateGender(gender)
+				uni.showLoading({ title: '保存中...' })
 				
-				this.userInfo.gender = gender
-				uni.setStorageSync('userInfo', this.userInfo)
-				
-				uni.showToast({
-					title: '性别更新成功',
-					icon: 'success'
+				// 调用API更新性别
+				const res = await api.user.updateInfo({
+					id: this.userInfo.id,
+					gender: gender
 				})
+				
+				if (res.code === 200) {
+					this.userInfo.gender = gender
+					uni.setStorageSync('userInfo', this.userInfo)
+					
+					uni.hideLoading()
+					uni.showToast({
+						title: '性别更新成功',
+						icon: 'success'
+					})
+				} else {
+					throw new Error(res.message || '更新失败')
+				}
 			} catch (error) {
 				console.error('更新性别失败:', error)
-				// 模拟更新成功
-				this.userInfo.gender = gender
-				uni.setStorageSync('userInfo', this.userInfo)
+				uni.hideLoading()
 				uni.showToast({
-					title: '性别更新成功',
-					icon: 'success'
+					title: '更新失败',
+					icon: 'none'
 				})
 			}
 		},
 
-		// 编辑生日
+		// 编辑生日 - 直接触发picker
 		editBirthday() {
-			uni.showActionSheet({
-				itemList: ['选择生日'],
-				success: () => {
-					// 触发日期选择器
-					this.$refs.birthdayPicker.$el.click()
-				}
-			})
+			// 不需要额外操作，点击会触发picker
 		},
 
 		// 生日改变
@@ -356,42 +424,45 @@ export default {
 			const birthday = e.detail.value
 			
 			try {
-				// 这里应该调用API更新生日
-				// await api.user.updateBirthday(birthday)
+				uni.showLoading({ title: '保存中...' })
 				
-				this.userInfo.birthday = birthday
-				uni.setStorageSync('userInfo', this.userInfo)
-				
-				uni.showToast({
-					title: '生日更新成功',
-					icon: 'success'
+				// 调用API更新生日
+				const res = await api.user.updateInfo({
+					id: this.userInfo.id,
+					birthday: birthday
 				})
+				
+				if (res.code === 200) {
+					this.userInfo.birthday = birthday
+					uni.setStorageSync('userInfo', this.userInfo)
+					
+					uni.hideLoading()
+					uni.showToast({
+						title: '生日更新成功',
+						icon: 'success'
+					})
+				} else {
+					throw new Error(res.message || '更新失败')
+				}
 			} catch (error) {
 				console.error('更新生日失败:', error)
-				// 模拟更新成功
-				this.userInfo.birthday = birthday
-				uni.setStorageSync('userInfo', this.userInfo)
+				uni.hideLoading()
 				uni.showToast({
-					title: '生日更新成功',
-					icon: 'success'
+					title: '更新失败',
+					icon: 'none'
 				})
 			}
 		},
 
-		// 绑定手机号
-		bindPhone() {
-			uni.navigateTo({
-				url: '/pages/bind-phone/bind-phone'
-			})
-		},
 
-		// 绑定微信
-		bindWechat() {
-			if (this.userInfo.wechatBound) {
-				// 解绑微信
+
+		// 处理微信绑定/解绑
+		handleWechatBind() {
+			if (this.userInfo.openid) {
+				// 已绑定，执行解绑
 				uni.showModal({
 					title: '解绑微信',
-					content: '确定要解绑微信吗？解绑后将无法使用微信登录。',
+					content: '确定要解绑微信吗？',
 					success: (res) => {
 						if (res.confirm) {
 							this.unbindWechat()
@@ -399,36 +470,55 @@ export default {
 					}
 				})
 			} else {
-				// 绑定微信
-				this.performWechatBind()
+				// 未绑定，执行绑定
+				this.bindWechat()
 			}
 		},
 
-		// 执行微信绑定
-		async performWechatBind() {
+		// 绑定微信
+		async bindWechat() {
 			try {
 				uni.showLoading({ title: '绑定中...' })
 				
-				// 这里应该调用微信授权API
-				// const res = await api.user.bindWechat()
-				
-				// 模拟绑定成功
-				this.userInfo.wechatBound = true
-				this.userInfo.wechatNickname = '微信用户'
-				uni.setStorageSync('userInfo', this.userInfo)
-				
-				uni.showToast({
-					title: '微信绑定成功',
-					icon: 'success'
+				// 调用微信登录获取code
+				const loginRes = await uni.login({
+					provider: 'weixin'
 				})
+				
+				if (!loginRes[1] || !loginRes[1].code) {
+					throw new Error('获取微信授权失败')
+				}
+				
+				const code = loginRes[1].code
+				
+				// 调用后端API绑定微信
+				const res = await api.user.bindWechat({
+					userId: this.userInfo.id,
+					code: code
+				})
+				
+				if (res.code === 200) {
+					this.userInfo.openid = res.data.openid
+					uni.setStorageSync('userInfo', this.userInfo)
+					
+					uni.hideLoading()
+					uni.showToast({
+						title: '微信绑定成功',
+						icon: 'success'
+					})
+					
+					// 刷新用户信息
+					this.loadUserInfo()
+				} else {
+					throw new Error(res.message || '绑定失败')
+				}
 			} catch (error) {
 				console.error('微信绑定失败:', error)
+				uni.hideLoading()
 				uni.showToast({
-					title: '绑定失败',
+					title: error.message || '绑定失败',
 					icon: 'none'
 				})
-			} finally {
-				uni.hideLoading()
 			}
 		},
 
@@ -437,22 +527,67 @@ export default {
 			try {
 				uni.showLoading({ title: '解绑中...' })
 				
-				// 这里应该调用解绑API
-				// await api.user.unbindWechat()
-				
-				// 模拟解绑成功
-				this.userInfo.wechatBound = false
-				this.userInfo.wechatNickname = ''
-				uni.setStorageSync('userInfo', this.userInfo)
-				
-				uni.showToast({
-					title: '微信解绑成功',
-					icon: 'success'
+				// 调用后端API解绑微信
+				const res = await api.user.unbindWechat({
+					userId: this.userInfo.id
 				})
+				
+				if (res.code === 200) {
+					this.userInfo.openid = null
+					uni.setStorageSync('userInfo', this.userInfo)
+					
+					uni.hideLoading()
+					uni.showToast({
+						title: '微信解绑成功',
+						icon: 'success'
+					})
+					
+					// 刷新用户信息
+					this.loadUserInfo()
+				} else {
+					throw new Error(res.message || '解绑失败')
+				}
 			} catch (error) {
 				console.error('微信解绑失败:', error)
+				uni.hideLoading()
 				uni.showToast({
-					title: '解绑失败',
+					title: error.message || '解绑失败',
+					icon: 'none'
+				})
+			}
+		},
+
+		// 显示修改密码弹窗
+		showChangePasswordModal() {
+			this.oldPassword = ''
+			this.newPassword = ''
+			this.confirmPassword = ''
+			this.showPasswordModal = true
+		},
+
+		// 隐藏修改密码弹窗
+		hidePasswordModal() {
+			this.showPasswordModal = false
+		},
+
+		// 显示登录记录
+		async showLoginHistory() {
+			try {
+				uni.showLoading({ title: '加载中...' })
+				
+				// 调用后端API获取登录记录
+				const res = await api.user.getLoginHistory(this.userInfo.id)
+				
+				if (res.code === 200) {
+					this.loginHistory = res.data || []
+					this.showLoginHistoryModal = true
+				} else {
+					throw new Error(res.message || '获取失败')
+				}
+			} catch (error) {
+				console.error('获取登录记录失败:', error)
+				uni.showToast({
+					title: error.message || '获取失败',
 					icon: 'none'
 				})
 			} finally {
@@ -460,22 +595,94 @@ export default {
 			}
 		},
 
-		// 修改密码
-		changePassword() {
-			uni.showToast({
-				title: '功能开发中',
-				icon: 'none'
-			})
+		// 隐藏登录记录弹窗
+		hideLoginHistoryModal() {
+			this.showLoginHistoryModal = false
 		},
 
-		// 显示登录记录
-		showLoginHistory() {
-			uni.showModal({
-				title: '登录记录',
-				content: '最近登录：\n2024-11-13 18:30 iPhone\n2024-11-12 09:15 Android\n2024-11-11 20:45 小程序',
-				showCancel: false,
-				confirmText: '确定'
-			})
+		// 保存新密码
+		async savePassword() {
+			// 验证输入
+			if (!this.oldPassword) {
+				uni.showToast({
+					title: '请输入旧密码',
+					icon: 'none'
+				})
+				return
+			}
+
+			if (!this.newPassword) {
+				uni.showToast({
+					title: '请输入新密码',
+					icon: 'none'
+				})
+				return
+			}
+
+			if (this.newPassword.length < 6 || this.newPassword.length > 20) {
+				uni.showToast({
+					title: '密码长度为6-20个字符',
+					icon: 'none'
+				})
+				return
+			}
+
+			if (this.newPassword !== this.confirmPassword) {
+				uni.showToast({
+					title: '两次输入的密码不一致',
+					icon: 'none'
+				})
+				return
+			}
+
+			if (this.oldPassword === this.newPassword) {
+				uni.showToast({
+					title: '新密码不能与旧密码相同',
+					icon: 'none'
+				})
+				return
+			}
+
+			try {
+				uni.showLoading({ title: '修改中...' })
+				
+				// 调用后端API修改密码
+				const res = await api.user.changePassword({
+					userId: this.userInfo.id,
+					oldPassword: this.oldPassword,
+					newPassword: this.newPassword
+				})
+				
+				if (res.code === 200) {
+					this.hidePasswordModal()
+					uni.hideLoading()
+					
+					uni.showModal({
+						title: '修改成功',
+						content: '密码修改成功，请重新登录',
+						showCancel: false,
+						success: () => {
+							// 清除登录信息
+							uni.removeStorageSync('token')
+							uni.removeStorageSync('userInfo')
+							
+							// 跳转到登录页
+							uni.reLaunch({
+								url: '/pages/login/login'
+							})
+						}
+					})
+				} else {
+					throw new Error(res.message || '修改失败')
+				}
+			} catch (error) {
+				console.error('修改密码失败:', error)
+				uni.hideLoading()
+				uni.showToast({
+					title: error.message || '修改失败',
+					icon: 'none'
+				})
+			}
 		},
 
 		// 格式化手机号
@@ -768,6 +975,12 @@ export default {
 	text-align: center;
 }
 
+.security-content {
+	flex: 1;
+	display: flex;
+	flex-direction: column;
+}
+
 .security-text {
 	font-size: 28rpx;
 	color: #333;
@@ -776,7 +989,6 @@ export default {
 }
 
 .security-desc {
-	flex: 1;
 	font-size: 22rpx;
 	color: #999;
 	line-height: 1.4;
@@ -892,5 +1104,144 @@ export default {
 
 .modal-btn:active {
 	background: rgba(255, 107, 53, 0.05);
+}
+
+/* 修改密码弹窗 */
+.password-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.3s ease;
+	z-index: 999;
+}
+
+.password-modal.show {
+	opacity: 1;
+	visibility: visible;
+}
+
+.password-modal .modal-content {
+	transform: scale(0.9);
+}
+
+.password-modal.show .modal-content {
+	transform: scale(1);
+}
+
+.password-input {
+	width: 100%;
+	padding: 24rpx;
+	border: 2rpx solid #f0f0f0;
+	border-radius: 16rpx;
+	font-size: 28rpx;
+	color: #333;
+	margin-bottom: 20rpx;
+}
+
+.password-input:focus {
+	border-color: #ff6b35;
+}
+
+/* 登录记录弹窗 */
+.login-history-modal {
+	position: fixed;
+	top: 0;
+	left: 0;
+	right: 0;
+	bottom: 0;
+	background: rgba(0, 0, 0, 0.5);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	opacity: 0;
+	visibility: hidden;
+	transition: all 0.3s ease;
+	z-index: 999;
+}
+
+.login-history-modal.show {
+	opacity: 1;
+	visibility: visible;
+}
+
+.history-content {
+	max-height: 80vh;
+}
+
+.history-content .modal-body {
+	max-height: 60vh;
+	overflow-y: auto;
+}
+
+.empty-history {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	padding: 80rpx 0;
+}
+
+.empty-icon {
+	font-size: 80rpx;
+	margin-bottom: 20rpx;
+	opacity: 0.3;
+}
+
+.empty-text {
+	font-size: 28rpx;
+	color: #999;
+}
+
+.history-list {
+	padding: 0;
+}
+
+.history-item {
+	padding: 30rpx 0;
+	border-bottom: 1rpx solid #f0f0f0;
+}
+
+.history-item:last-child {
+	border-bottom: none;
+}
+
+.history-info {
+	display: flex;
+	justify-content: space-between;
+	align-items: center;
+	margin-bottom: 12rpx;
+}
+
+.history-device {
+	font-size: 28rpx;
+	color: #333;
+	font-weight: 500;
+}
+
+.history-time {
+	font-size: 24rpx;
+	color: #999;
+}
+
+.history-location {
+	font-size: 24rpx;
+	color: #666;
+}
+
+.modal-footer.single {
+	border-top: 1rpx solid #f0f0f0;
+}
+
+.modal-btn.full {
+	width: 100%;
+	border-right: none;
 }
 </style>

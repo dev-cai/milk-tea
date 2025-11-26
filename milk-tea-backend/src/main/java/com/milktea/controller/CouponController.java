@@ -1,8 +1,9 @@
 package com.milktea.controller;
 
 import com.milktea.common.Result;
+import com.milktea.dto.CouponDTO;
+import com.milktea.dto.UserCouponDTO;
 import com.milktea.entity.Coupon;
-import com.milktea.entity.UserCoupon;
 import com.milktea.service.CouponService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -29,7 +30,11 @@ public class CouponController {
      * 获取可用优惠券列表
      */
     @GetMapping("/available")
-    public Result<List<Coupon>> getAvailableCoupons() {
+    public Result<List<Coupon>> getAvailableCoupons(@RequestParam(required = false) Long userId) {
+        // 如果传了userId，返回包含领取状态的列表
+        if (userId != null) {
+            return (Result) couponService.getAvailableCouponsWithStatus(userId);
+        }
         return couponService.getAvailableCoupons();
     }
     
@@ -43,10 +48,10 @@ public class CouponController {
     }
     
     /**
-     * 获取用户优惠券列表
+     * 获取用户优惠券列表（包含优惠券详情）
      */
     @GetMapping("/my")
-    public Result<List<UserCoupon>> getUserCoupons(
+    public Result<List<UserCouponDTO>> getUserCoupons(
             @RequestParam Long userId,
             @RequestParam(required = false) Integer status) {
         return couponService.getUserCoupons(userId, status);

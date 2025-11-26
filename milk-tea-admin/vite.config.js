@@ -10,7 +10,9 @@ export default defineConfig({
     }
   },
   server: {
+    host: '0.0.0.0', // 只监听 IPv4 localhost
     port: 3000,
+    open: true, // 自动打开浏览器
     proxy: {
       '/api': {
         target: 'http://localhost:8080',

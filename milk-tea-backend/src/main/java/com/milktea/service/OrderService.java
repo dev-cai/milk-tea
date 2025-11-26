@@ -280,6 +280,62 @@ public class OrderService {
     }
     
     /**
+     * 确认收货
+     */
+    @Transactional
+    public Result<String> confirmOrder(Long orderId, Long userId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("无权操作此订单");
+        }
+        
+        if (order.getStatus() != 3) {
+            throw new BusinessException("只有待取餐的订单才能确认收货");
+        }
+        
+        // 更新订单状态为已完成
+        order.setStatus(4);
+        order.setFinishTime(LocalDateTime.now());
+        orderMapper.updateById(order);
+        
+        log.info("订单确认收货成功: orderId={}, userId={}", orderId, userId);
+        return Result.success("确认收货成功");
+    }
+    
+    /**
+     * 订单评价
+     */
+    @Transactional
+    public Result<String> evaluateOrder(Long orderId, Long userId, Map<String, Object> evaluateData) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("无权操作此订单");
+        }
+        
+        if (order.getStatus() != 4) {
+            throw new BusinessException("只有已完成的订单才能评价");
+        }
+        
+        // 这里可以将评价信息保存到评价表
+        // 简化实现：只记录日志
+        Integer rating = (Integer) evaluateData.get("rating");
+        String comment = (String) evaluateData.get("comment");
+        
+        log.info("订单评价: orderId={}, userId={}, rating={}, comment={}", 
+                orderId, userId, rating, comment);
+        
+        return Result.success("评价成功");
+    }
+    
+    /**
      * 生成订单号
      */
     private String generateOrderNo() {

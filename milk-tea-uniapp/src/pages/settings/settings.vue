@@ -147,6 +147,8 @@
 </template>
 
 <script>
+import api from '@/utils/api.js'
+
 export default {
 	data() {
 		return {
@@ -162,22 +164,64 @@ export default {
 		}
 	},
 	onLoad() {
-		this.loadSettings()
 		this.checkLoginStatus()
+		this.loadSettings()
 		this.calculateCacheSize()
 	},
 	methods: {
 		// 加载设置
-		loadSettings() {
-			const savedSettings = uni.getStorageSync('appSettings')
-			if (savedSettings) {
-				this.settings = { ...this.settings, ...savedSettings }
+		async loadSettings() {
+			try {
+				const userInfo = uni.getStorageSync('userInfo')
+				if (userInfo && userInfo.id) {
+					// 从服务器加载设置
+					const res = await api.settings.get(userInfo.id)
+					if (res.code === 200 && res.data) {
+						this.settings = {
+							orderNotification: res.data.orderNotification === 1,
+							activityPush: res.data.activityPush === 1,
+							couponReminder: res.data.couponReminder === 1,
+							personalizedRecommend: res.data.personalizedRecommend === 1
+						}
+					}
+				} else {
+					// 未登录，从本地加载
+					const savedSettings = uni.getStorageSync('appSettings')
+					if (savedSettings) {
+						this.settings = { ...this.settings, ...savedSettings }
+					}
+				}
+			} catch (error) {
+				console.error('加载设置失败:', error)
+				// 加载失败，使用本地设置
+				const savedSettings = uni.getStorageSync('appSettings')
+				if (savedSettings) {
+					this.settings = { ...this.settings, ...savedSettings }
+				}
 			}
 		},
 
 		// 保存设置
-		saveSettings() {
-			uni.setStorageSync('appSettings', this.settings)
+		async saveSettings() {
+			try {
+				const userInfo = uni.getStorageSync('userInfo')
+				if (userInfo && userInfo.id) {
+					// 保存到服务器
+					await api.settings.update({
+						userId: userInfo.id,
+						orderNotification: this.settings.orderNotification ? 1 : 0,
+						activityPush: this.settings.activityPush ? 1 : 0,
+						couponReminder: this.settings.couponReminder ? 1 : 0,
+						personalizedRecommend: this.settings.personalizedRecommend ? 1 : 0
+					})
+				}
+				// 同时保存到本地
+				uni.setStorageSync('appSettings', this.settings)
+			} catch (error) {
+				console.error('保存设置失败:', error)
+				// 保存失败，至少保存到本地
+				uni.setStorageSync('appSettings', this.settings)
+			}
 		},
 
 		// 检查登录状态

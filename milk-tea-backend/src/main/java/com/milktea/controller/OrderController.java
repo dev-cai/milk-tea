@@ -71,4 +71,22 @@ public class OrderController {
         String reason = request.get("reason").toString();
         return orderService.refundOrder(id, userId, reason);
     }
+    
+    /**
+     * 确认收货
+     */
+    @PutMapping("/{id}/confirm")
+    public Result<String> confirmOrder(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        Long userId = Long.valueOf(request.get("userId").toString());
+        return orderService.confirmOrder(id, userId);
+    }
+    
+    /**
+     * 订单评价
+     */
+    @PostMapping("/{id}/evaluate")
+    public Result<String> evaluateOrder(@PathVariable Long id, @RequestBody Map<String, Object> request) {
+        Long userId = Long.valueOf(request.get("userId").toString());
+        return orderService.evaluateOrder(id, userId, request);
+    }
 }

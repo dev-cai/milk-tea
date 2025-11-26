@@ -3,12 +3,17 @@
 		<!-- 用户信息头部 -->
 		<view class="user-header">
 			<view class="user-info">
-				<view class="avatar-section" @click="goToProfile">
-					<image class="avatar" :src="userInfo.avatar || 'https://via.placeholder.com/200x200/CCCCCC/666666?text=Avatar'" mode="aspectFill"></image>
-					<view class="avatar-edit">👤</view>
+				<view class="avatar-section" @click="userInfo.id ? chooseAvatar() : goToLogin()">
+					<image v-if="userInfo.avatar" class="avatar" :src="userInfo.avatar" mode="aspectFill" @error="onAvatarError"></image>
+					<view v-else class="avatar-placeholder">
+						<text class="avatar-text">{{ userInfo.nickname ? userInfo.nickname.charAt(0) : '?' }}</text>
+					</view>
+					<view class="avatar-edit" v-if="userInfo.id">
+						<text class="edit-icon">✎</text>
+					</view>
 				</view>
 				<view class="info-section">
-					<text class="nickname">{{ userInfo.nickname || '点击登录' }}</text>
+					<text class="nickname" @click="userInfo.id ? goToProfile() : goToLogin()">{{ userInfo.nickname || '点击登录' }}</text>
 					<view class="member-info" v-if="userInfo.id">
 						<text class="member-level" :style="{ color: getMemberLevelColor(userInfo.memberLevel) }">
 							{{ getMemberLevelText(userInfo.memberLevel) }}
@@ -52,26 +57,36 @@
 			</view>
 			<view class="order-types">
 				<view class="order-type" @click="goToOrderList(0)">
-					<text class="type-icon">💰</text>
+					<view class="type-icon-box">
+						<text class="type-icon">¥</text>
+					</view>
 					<text class="type-name">待支付</text>
 					<view class="type-badge" v-if="orderCounts.unpaid > 0">{{ orderCounts.unpaid }}</view>
 				</view>
 				<view class="order-type" @click="goToOrderList(1)">
-					<text class="type-icon">⏰</text>
+					<view class="type-icon-box">
+						<text class="type-icon">···</text>
+					</view>
 					<text class="type-name">待制作</text>
 					<view class="type-badge" v-if="orderCounts.preparing > 0">{{ orderCounts.preparing }}</view>
 				</view>
 				<view class="order-type" @click="goToOrderList(3)">
-					<text class="type-icon">🥤</text>
+					<view class="type-icon-box">
+						<text class="type-icon">取</text>
+					</view>
 					<text class="type-name">待取餐</text>
 					<view class="type-badge" v-if="orderCounts.ready > 0">{{ orderCounts.ready }}</view>
 				</view>
 				<view class="order-type" @click="goToOrderList(4)">
-					<text class="type-icon">✅</text>
+					<view class="type-icon-box">
+						<text class="type-icon">✓</text>
+					</view>
 					<text class="type-name">已完成</text>
 				</view>
 				<view class="order-type" @click="goToOrderList(6)">
-					<text class="type-icon">🔄</text>
+					<view class="type-icon-box">
+						<text class="type-icon">↻</text>
+					</view>
 					<text class="type-name">售后</text>
 					<view class="type-badge" v-if="orderCounts.refund > 0">{{ orderCounts.refund }}</view>
 				</view>
@@ -82,17 +97,23 @@
 		<view class="menu-section">
 			<view class="menu-group">
 				<view class="menu-item" @click="goToAddress">
-					<text class="menu-icon">📍</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">📍</text>
+					</view>
 					<text class="menu-text">地址管理</text>
 					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="goToMember">
-					<text class="menu-icon">👑</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">VIP</text>
+					</view>
 					<text class="menu-text">会员中心</text>
 					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="goToCoupon">
-					<text class="menu-icon">🎫</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">券</text>
+					</view>
 					<text class="menu-text">我的优惠券</text>
 					<text class="menu-arrow">›</text>
 				</view>
@@ -100,17 +121,23 @@
 
 			<view class="menu-group">
 				<view class="menu-item" @click="shareApp">
-					<text class="menu-icon">📤</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">↗</text>
+					</view>
 					<text class="menu-text">邀请好友</text>
 					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="goToFeedback">
-					<text class="menu-icon">💬</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">💬</text>
+					</view>
 					<text class="menu-text">意见反馈</text>
 					<text class="menu-arrow">›</text>
 				</view>
 				<view class="menu-item" @click="contactService">
-					<text class="menu-icon">📞</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">服</text>
+					</view>
 					<text class="menu-text">联系客服</text>
 					<text class="menu-arrow">›</text>
 				</view>
@@ -118,7 +145,9 @@
 
 			<view class="menu-group">
 				<view class="menu-item" @click="goToSettings">
-					<text class="menu-icon">⚙️</text>
+					<view class="menu-icon-box">
+						<text class="menu-icon">⚙</text>
+					</view>
 					<text class="menu-text">设置</text>
 					<text class="menu-arrow">›</text>
 				</view>
@@ -170,19 +199,38 @@ export default {
 				}
 
 				const userInfo = uni.getStorageSync('userInfo')
-				if (userInfo) {
-					this.userInfo = userInfo
-				}
-
-				// 从服务器获取最新用户信息
-				const res = await api.user.getInfo(this.userInfo.id)
-				if (res.code === 200) {
-					this.userInfo = res.data
-					uni.setStorageSync('userInfo', this.userInfo)
+				if (userInfo && userInfo.id) {
+					// 先显示本地数据
+					this.userInfo = { ...userInfo }
+					console.log('【个人中心】从本地加载用户信息:', this.userInfo)
+					console.log('【个人中心】本地会员等级:', this.userInfo.memberLevel, '类型:', typeof this.userInfo.memberLevel)
+					
+					// 从服务器获取最新用户信息
+					try {
+						const res = await api.user.getInfo(userInfo.id)
+						console.log('【个人中心】服务器返回完整数据:', res)
+						if (res.code === 200 && res.data) {
+							console.log('【个人中心】服务器返回用户数据:', res.data)
+							console.log('【个人中心】服务器会员等级:', res.data.memberLevel, '类型:', typeof res.data.memberLevel)
+							this.userInfo = { ...res.data }
+							uni.setStorageSync('userInfo', this.userInfo)
+							console.log('【个人中心】更新后的用户信息:', this.userInfo)
+							console.log('【个人中心】更新后的会员等级:', this.userInfo.memberLevel)
+						}
+					} catch (apiError) {
+						console.error('从服务器获取用户信息失败，使用本地数据:', apiError)
+					}
 				}
 			} catch (error) {
 				console.error('加载用户信息失败:', error)
 			}
+		},
+		
+		// 头像加载失败处理
+		onAvatarError(e) {
+			console.error('头像加载失败:', e)
+			// 头像加载失败时，清除头像显示占位符
+			this.userInfo.avatar = ''
 		},
 
 		// 加载订单统计
@@ -237,10 +285,37 @@ export default {
 				return
 			}
 
+			uni.showActionSheet({
+				itemList: ['从相册选择', '拍照'],
+				success: (res) => {
+					if (res.tapIndex === 0) {
+						this.selectImageFromAlbum()
+					} else if (res.tapIndex === 1) {
+						this.selectImageFromCamera()
+					}
+				}
+			})
+		},
+
+		// 从相册选择
+		selectImageFromAlbum() {
 			uni.chooseImage({
 				count: 1,
 				sizeType: ['compressed'],
-				sourceType: ['album', 'camera'],
+				sourceType: ['album'],
+				success: (res) => {
+					const tempFilePath = res.tempFilePaths[0]
+					this.uploadAvatar(tempFilePath)
+				}
+			})
+		},
+
+		// 拍照
+		selectImageFromCamera() {
+			uni.chooseImage({
+				count: 1,
+				sizeType: ['compressed'],
+				sourceType: ['camera'],
 				success: (res) => {
 					const tempFilePath = res.tempFilePaths[0]
 					this.uploadAvatar(tempFilePath)
@@ -253,17 +328,90 @@ export default {
 			try {
 				uni.showLoading({ title: '上传中...' })
 				
-				// 这里应该调用文件上传接口
-				// 暂时使用本地路径
-				this.userInfo.avatar = filePath
-				uni.setStorageSync('userInfo', this.userInfo)
+				console.log('选择的图片路径:', filePath)
 				
-				uni.hideLoading()
-				uni.showToast({
-					title: '头像更新成功',
-					icon: 'success'
+				const token = uni.getStorageSync('token')
+				if (!token) {
+					uni.hideLoading()
+					uni.showToast({
+						title: '请先登录',
+						icon: 'none'
+					})
+					return
+				}
+				
+				// 上传文件到服务器
+				uni.uploadFile({
+					url: 'http://localhost:8080/api/file/upload-avatar',
+					filePath: filePath,
+					name: 'file',
+					header: {
+						'Authorization': `Bearer ${token}`
+					},
+					success: async (uploadRes) => {
+						console.log('上传响应:', uploadRes)
+						
+						try {
+							const data = JSON.parse(uploadRes.data)
+							console.log('解析后的数据:', data)
+							
+							if (data.code === 200) {
+								const avatarUrl = data.data.url
+								console.log('头像URL:', avatarUrl)
+								
+								// 更新用户信息
+								const updateRes = await api.user.updateInfo({
+									id: this.userInfo.id,
+									avatar: avatarUrl
+								})
+								
+								if (updateRes.code === 200) {
+									// 更新本地数据 - 创建新对象触发响应式更新
+									const newUserInfo = {
+										...this.userInfo,
+										avatar: avatarUrl
+									}
+									this.userInfo = newUserInfo
+									uni.setStorageSync('userInfo', newUserInfo)
+									
+									console.log('头像更新成功，新的userInfo:', this.userInfo)
+									
+									uni.hideLoading()
+									uni.showToast({
+										title: '头像更新成功',
+										icon: 'success'
+									})
+									
+									// 延迟刷新页面确保显示
+									setTimeout(() => {
+										this.loadUserInfo()
+									}, 500)
+								} else {
+									throw new Error(updateRes.message || '更新用户信息失败')
+								}
+							} else {
+								throw new Error(data.message || '上传失败')
+							}
+						} catch (parseError) {
+							console.error('处理上传结果失败:', parseError)
+							uni.hideLoading()
+							uni.showToast({
+								title: '上传失败: ' + parseError.message,
+								icon: 'none'
+							})
+						}
+					},
+					fail: (error) => {
+						console.error('上传文件失败:', error)
+						uni.hideLoading()
+						uni.showToast({
+							title: '上传失败',
+							icon: 'none'
+						})
+					}
 				})
 			} catch (error) {
+				console.error('上传头像失败:', error)
 				uni.hideLoading()
 				uni.showToast({
 					title: '上传失败',
@@ -459,19 +607,44 @@ export default {
 	box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.2);
 }
 
+.avatar-placeholder {
+	width: 120rpx;
+	height: 120rpx;
+	border-radius: 50%;
+	background: linear-gradient(135deg, #ff6b35 0%, #f7931e 100%);
+	border: 6rpx solid rgba(255, 255, 255, 0.3);
+	box-shadow: 0 8rpx 32rpx rgba(255, 107, 53, 0.3);
+	display: flex;
+	align-items: center;
+	justify-content: center;
+}
+
+.avatar-text {
+	font-size: 48rpx;
+	color: white;
+	font-weight: 700;
+	text-transform: uppercase;
+}
+
 .avatar-edit {
 	position: absolute;
 	bottom: 0;
 	right: 0;
 	width: 40rpx;
 	height: 40rpx;
-	background: rgba(255, 255, 255, 0.9);
+	background: linear-gradient(135deg, #ff6b35, #f7931e);
 	border-radius: 50%;
 	display: flex;
 	align-items: center;
 	justify-content: center;
-	font-size: 20rpx;
-	box-shadow: 0 2rpx 8rpx rgba(0, 0, 0, 0.1);
+	box-shadow: 0 2rpx 8rpx rgba(255, 107, 53, 0.3);
+	border: 2rpx solid white;
+}
+
+.edit-icon {
+	font-size: 18rpx;
+	color: white;
+	font-weight: 600;
 }
 
 .info-section {
@@ -570,9 +743,32 @@ export default {
 	transform: scale(0.95);
 }
 
+.action-icon-box {
+	width: 80rpx;
+	height: 80rpx;
+	background: linear-gradient(135deg, #ff6b35, #f7931e);
+	border-radius: 20rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 12rpx;
+	box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.3);
+}
+
+.action-icon-box.points {
+	background: linear-gradient(135deg, #667eea, #764ba2);
+	box-shadow: 0 4rpx 12rpx rgba(102, 126, 234, 0.3);
+}
+
+.action-icon-box.coupon {
+	background: linear-gradient(135deg, #f093fb, #f5576c);
+	box-shadow: 0 4rpx 12rpx rgba(240, 147, 251, 0.3);
+}
+
 .action-icon {
-	font-size: 40rpx;
-	margin-bottom: 8rpx;
+	font-size: 32rpx;
+	color: white;
+	font-weight: 700;
 }
 
 .action-text {
@@ -631,9 +827,22 @@ export default {
 	transform: scale(0.95);
 }
 
+.type-icon-box {
+	width: 72rpx;
+	height: 72rpx;
+	background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(247, 147, 30, 0.1));
+	border-radius: 16rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
+	margin-bottom: 12rpx;
+	border: 2rpx solid rgba(255, 107, 53, 0.2);
+}
+
 .type-icon {
-	font-size: 40rpx;
-	margin-bottom: 8rpx;
+	font-size: 26rpx;
+	color: #ff6b35;
+	font-weight: 700;
 }
 
 .type-name {
@@ -687,9 +896,22 @@ export default {
 	background: rgba(255, 107, 53, 0.05);
 }
 
-.menu-icon {
-	font-size: 40rpx;
+.menu-icon-box {
+	width: 64rpx;
+	height: 64rpx;
+	background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(247, 147, 30, 0.08));
+	border-radius: 14rpx;
+	display: flex;
+	align-items: center;
+	justify-content: center;
 	margin-right: 24rpx;
+	border: 1rpx solid rgba(255, 107, 53, 0.15);
+}
+
+.menu-icon {
+	font-size: 24rpx;
+	color: #ff6b35;
+	font-weight: 600;
 }
 
 .menu-text {

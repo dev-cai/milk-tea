@@ -71,4 +71,36 @@ public class UserController {
     public Result<String> deleteUserAddress(@PathVariable Long id) {
         return userService.deleteUserAddress(id);
     }
+    
+    /**
+     * 绑定微信
+     */
+    @PostMapping("/bind-wechat")
+    public Result<String> bindWechat(@RequestBody User user) {
+        return userService.bindWechat(user);
+    }
+    
+    /**
+     * 解绑微信
+     */
+    @PostMapping("/unbind-wechat")
+    public Result<String> unbindWechat(@RequestBody User user) {
+        return userService.unbindWechat(user);
+    }
+    
+    /**
+     * 修改密码
+     */
+    @PostMapping("/change-password")
+    public Result<String> changePassword(@RequestBody java.util.Map<String, Object> params) {
+        return userService.changePassword(params);
+    }
+    
+    /**
+     * 获取登录记录
+     */
+    @GetMapping("/login-history")
+    public Result<java.util.List<com.milktea.entity.LoginHistory>> getLoginHistory(@RequestParam Long userId) {
+        return userService.getLoginHistory(userId);
+    }
 }

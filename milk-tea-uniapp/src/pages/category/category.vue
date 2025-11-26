@@ -39,21 +39,21 @@
 
 				<!-- 筛选栏 -->
 				<view class="filter-bar">
-					<scroll-view class="filter-scroll" scroll-x="true" show-scrollbar="false">
-						<view class="filter-item" :class="{ active: sortType === 'default' }" @click="setSortType('default')">
+					<view class="filter-list">
+						<view class="filter-item" :class="{ active: sortType === 'default' }" @tap="setSortType('default')">
 							<text>综合</text>
 						</view>
-						<view class="filter-item" :class="{ active: sortType === 'sales' }" @click="setSortType('sales')">
+						<view class="filter-item" :class="{ active: sortType === 'sales' }" @tap="setSortType('sales')">
 							<text>销量</text>
 						</view>
-						<view class="filter-item" :class="{ active: sortType === 'price' }" @click="setSortType('price')">
+						<view class="filter-item" :class="{ active: sortType === 'price' }" @tap="setSortType('price')">
 							<text>价格</text>
 							<text class="sort-arrow" v-if="sortType === 'price'">{{ priceOrder === 'asc' ? '↑' : '↓' }}</text>
 						</view>
-						<view class="filter-item" :class="{ active: sortType === 'rating' }" @click="setSortType('rating')">
+						<view class="filter-item" :class="{ active: sortType === 'rating' }" @tap="setSortType('rating')">
 							<text>评分</text>
 						</view>
-					</scroll-view>
+					</view>
 				</view>
 
 				<!-- 商品列表 -->
@@ -151,18 +151,7 @@ export default {
 		async loadCategories() {
 			try {
 				const res = await api.category.getList()
-				if (res.code === 200) {
-					this.categories = res.data || []
-				} else {
-					// 使用默认数据
-					this.categories = [
-						{ id: 1, name: '奶茶', icon: '🧋', productCount: 15, description: '香醇奶茶，经典口味' },
-						{ id: 2, name: '咖啡', icon: '☕', productCount: 12, description: '精品咖啡，提神醒脑' },
-						{ id: 3, name: '果茶', icon: '🍹', productCount: 18, description: '新鲜果茶，清香怡人' },
-						{ id: 4, name: '小食', icon: '🍰', productCount: 8, description: '精美小食，搭配饮品' },
-						{ id: 5, name: '冰品', icon: '🍨', productCount: 10, description: '清凉冰品，夏日必备' }
-					]
-				}
+				this.categories = res.data || []
 
 				// 设置默认选中第一个分类
 				if (!this.currentCategoryId && this.categories.length > 0) {
@@ -178,19 +167,7 @@ export default {
 				}
 			} catch (error) {
 				console.error('加载分类失败:', error)
-				// 使用默认数据
-				this.categories = [
-					{ id: 1, name: '奶茶', icon: '🧋', productCount: 15 },
-					{ id: 2, name: '咖啡', icon: '☕', productCount: 12 },
-					{ id: 3, name: '果茶', icon: '🍹', productCount: 18 },
-					{ id: 4, name: '小食', icon: '🍰', productCount: 8 }
-				]
-				
-				if (!this.currentCategoryId) {
-					this.currentCategoryId = this.categories[0].id
-				}
-				this.updateCurrentCategory()
-				this.loadProducts(true)
+				this.categories = []
 			}
 		},
 
@@ -233,37 +210,23 @@ export default {
 
 				const res = await api.category.getProducts(this.currentCategoryId, params)
 				
-				if (res.code === 200) {
-					const newProducts = res.data?.records || []
-					
-					if (reset) {
-						this.products = newProducts
-					} else {
-						this.products.push(...newProducts)
-					}
-
-					this.hasMore = newProducts.length === this.pageSize
-					if (this.hasMore) {
-						this.page++
-					}
+				const newProducts = res.data?.records || []
+				
+				if (reset) {
+					this.products = newProducts
 				} else {
-					// 使用模拟数据
-					const mockProducts = this.generateMockProducts()
-					
-					if (reset) {
-						this.products = mockProducts
-					} else {
-						this.products.push(...mockProducts)
-					}
-					
-					this.hasMore = false
+					this.products.push(...newProducts)
+				}
+
+				this.hasMore = newProducts.length === this.pageSize
+				if (this.hasMore) {
+					this.page++
 				}
 			} catch (error) {
 				console.error('加载商品失败:', error)
 				
-				// 使用模拟数据
 				if (reset) {
-					this.products = this.generateMockProducts()
+					this.products = []
 					this.hasMore = false
 				}
 			} finally {
@@ -271,59 +234,15 @@ export default {
 			}
 		},
 
-		// 生成模拟商品数据
-		generateMockProducts() {
-			const categoryProducts = {
-				1: [ // 奶茶
-					{
-						id: 1,
-						name: '珍珠奶茶',
-						description: '经典珍珠奶茶，香甜可口',
-						image: '/static/product1.jpg',
-						price: 18.00,
-						memberPrice: 16.00,
-						sales: 999,
-						rating: 4.8,
-						reviewCount: 256,
-						tags: ['经典', '热销']
-					},
-					{
-						id: 2,
-						name: '芝士奶盖茶',
-						description: '浓郁芝士，层次丰富',
-						image: '/static/product2.jpg',
-						price: 22.00,
-						memberPrice: 20.00,
-						sales: 888,
-						rating: 4.9,
-						reviewCount: 189,
-						tags: ['网红', '芝士']
-					}
-				],
-				2: [ // 咖啡
-					{
-						id: 11,
-						name: '美式咖啡',
-						description: '纯正美式，苦中带香',
-						image: '/static/coffee1.jpg',
-						price: 25.00,
-						memberPrice: 22.00,
-						sales: 567,
-						rating: 4.6,
-						reviewCount: 123,
-						tags: ['经典', '提神']
-					}
-				]
-			}
-
-			return categoryProducts[this.currentCategoryId] || []
-		},
-
 		// 设置排序方式
 		setSortType(type) {
+			console.log('点击排序按钮:', type)
+			console.log('当前sortType:', this.sortType)
+			
 			if (type === 'price' && this.sortType === 'price') {
 				// 切换价格排序顺序
 				this.priceOrder = this.priceOrder === 'asc' ? 'desc' : 'asc'
+				console.log('切换价格排序:', this.priceOrder)
 			} else {
 				this.sortType = type
 				if (type === 'price') {
@@ -331,6 +250,7 @@ export default {
 				}
 			}
 			
+			console.log('开始重新加载商品...')
 			this.loadProducts(true)
 		},
 
@@ -507,26 +427,35 @@ export default {
 /* 筛选栏 */
 .filter-bar {
 	background: white;
-	padding: 20rpx 0;
+	padding: 20rpx 30rpx;
 	border-bottom: 1rpx solid #f0f0f0;
+	position: relative;
+	z-index: 10;
 }
 
-.filter-scroll {
-	white-space: nowrap;
-	padding: 0 30rpx;
+.filter-list {
+	display: flex;
+	align-items: center;
+	gap: 20rpx;
 }
 
 .filter-item {
-	display: inline-flex;
+	display: flex;
 	align-items: center;
+	justify-content: center;
 	padding: 16rpx 24rpx;
-	margin-right: 20rpx;
 	border-radius: 20rpx;
 	background: #f8f8f8;
 	font-size: 24rpx;
 	color: #666;
 	transition: all 0.3s ease;
 	white-space: nowrap;
+	flex-shrink: 0;
+}
+
+.filter-item:active {
+	opacity: 0.7;
+	transform: scale(0.98);
 }
 
 .filter-item.active {

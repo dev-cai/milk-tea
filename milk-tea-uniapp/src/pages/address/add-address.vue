@@ -113,38 +113,40 @@
 			<text>{{ isEdit ? '更新地址' : '保存地址' }}</text>
 		</view>
 
-		<!-- 地区选择器 -->
-		<picker-view 
-			class="region-picker" 
-			:class="{ show: showPicker }"
-			:value="pickerValue" 
-			@change="onPickerChange"
-		>
-			<picker-view-column>
-				<view v-for="(province, index) in provinces" :key="index">
-					{{ province.name }}
-				</view>
-			</picker-view-column>
-			<picker-view-column>
-				<view v-for="(city, index) in cities" :key="index">
-					{{ city.name }}
-				</view>
-			</picker-view-column>
-			<picker-view-column>
-				<view v-for="(district, index) in districts" :key="index">
-					{{ district.name }}
-				</view>
-			</picker-view-column>
-		</picker-view>
-
 		<!-- 遮罩层 -->
 		<view class="picker-mask" :class="{ show: showPicker }" @click="hidePicker"></view>
 		
-		<!-- 选择器工具栏 -->
-		<view class="picker-toolbar" :class="{ show: showPicker }">
-			<text class="picker-cancel" @click="hidePicker">取消</text>
-			<text class="picker-title">选择地区</text>
-			<text class="picker-confirm" @click="confirmRegion">确定</text>
+		<!-- 地区选择器容器 -->
+		<view class="picker-container" :class="{ show: showPicker }">
+			<!-- 选择器工具栏 -->
+			<view class="picker-toolbar">
+				<text class="picker-cancel" @click="hidePicker">取消</text>
+				<text class="picker-title">选择地区</text>
+				<text class="picker-confirm" @click="confirmRegion">确定</text>
+			</view>
+			
+			<!-- 地区选择器 -->
+			<picker-view 
+				class="region-picker"
+				:value="pickerValue" 
+				@change="onPickerChange"
+			>
+				<picker-view-column>
+					<view v-for="(province, index) in provinces" :key="index">
+						{{ province.name }}
+					</view>
+				</picker-view-column>
+				<picker-view-column>
+					<view v-for="(city, index) in cities" :key="index">
+						{{ city.name }}
+					</view>
+				</picker-view-column>
+				<picker-view-column>
+					<view v-for="(district, index) in districts" :key="index">
+						{{ district.name }}
+					</view>
+				</picker-view-column>
+			</picker-view>
 		</view>
 	</view>
 </template>
@@ -397,7 +399,9 @@ export default {
 				}
 
 				if (this.isEdit) {
-					await api.user.updateAddress(this.addressId, addressData)
+					// 更新地址时需要包含 id 字段
+					addressData.id = this.addressId
+					await api.user.updateAddress(addressData)
 				} else {
 					await api.user.addAddress(addressData)
 				}
@@ -661,52 +665,56 @@ export default {
 	visibility: visible;
 }
 
-.picker-toolbar {
+/* 选择器容器 */
+.picker-container {
 	position: fixed;
-	bottom: 500rpx;
+	bottom: 0;
 	left: 0;
 	right: 0;
 	background: white;
+	transform: translateY(100%);
+	transition: all 0.3s ease;
+	z-index: 1000;
+	border-radius: 32rpx 32rpx 0 0;
+	overflow: hidden;
+}
+
+.picker-container.show {
+	transform: translateY(0);
+}
+
+.picker-toolbar {
 	display: flex;
 	align-items: center;
 	justify-content: space-between;
-	padding: 20rpx 30rpx;
-	border-bottom: 1rpx solid #f0f0f0;
-	transform: translateY(100%);
-	transition: all 0.3s ease;
-	z-index: 1001;
-}
-
-.picker-toolbar.show {
-	transform: translateY(0);
+	padding: 24rpx 30rpx;
+	background: #f8f9fa;
+	border-bottom: 1rpx solid #e0e0e0;
 }
 
 .picker-cancel,
 .picker-confirm {
 	font-size: 28rpx;
 	color: #ff6b35;
-	font-weight: 500;
+	font-weight: 600;
+	padding: 8rpx 16rpx;
+	border-radius: 12rpx;
+	transition: all 0.2s ease;
+}
+
+.picker-cancel:active,
+.picker-confirm:active {
+	background: rgba(255, 107, 53, 0.1);
 }
 
 .picker-title {
-	font-size: 28rpx;
+	font-size: 30rpx;
 	color: #333;
-	font-weight: 600;
+	font-weight: 700;
 }
 
 .region-picker {
-	position: fixed;
-	bottom: 0;
-	left: 0;
-	right: 0;
 	height: 500rpx;
 	background: white;
-	transform: translateY(100%);
-	transition: all 0.3s ease;
-	z-index: 1000;
-}
-
-.region-picker.show {
-	transform: translateY(0);
 }
 </style>

@@ -209,6 +209,34 @@ const api = {
 			data
 		}),
 		
+		// 绑定微信
+		bindWechat: (data) => request({
+			url: '/user/bind-wechat',
+			method: 'POST',
+			data
+		}),
+		
+		// 解绑微信
+		unbindWechat: (data) => request({
+			url: '/user/unbind-wechat',
+			method: 'POST',
+			data
+		}),
+		
+		// 修改密码
+		changePassword: (data) => request({
+			url: '/user/change-password',
+			method: 'POST',
+			data
+		}),
+		
+		// 获取登录记录
+		getLoginHistory: (userId) => request({
+			url: '/user/login-history',
+			method: 'GET',
+			data: { userId }
+		}),
+		
 		// 获取用户地址列表
 		getAddresses: (userId) => request({
 			url: `/user/addresses`,
@@ -223,11 +251,11 @@ const api = {
 			data
 		}),
 		
-		// 更新地址
-		updateAddress: (id, data) => request({
-			url: `/user/address/${id}`,
+		// 更新地址（后端通过请求体中的id识别，不使用路径参数）
+		updateAddress: (data) => request({
+			url: '/user/address',
 			method: 'PUT',
-			data
+			data  // data 中必须包含 id 字段
 		}),
 		
 		// 删除地址
@@ -236,10 +264,11 @@ const api = {
 			method: 'DELETE'
 		}),
 		
-		// 设置默认地址
-		setDefaultAddress: (id) => request({
-			url: `/user/address/${id}/default`,
-			method: 'PUT'
+		// 设置默认地址（通过更新地址接口实现）
+		setDefaultAddress: (id, userId) => request({
+			url: '/user/address',
+			method: 'PUT',
+			data: { id, isDefault: 1, userId }
 		})
 	},
 	
@@ -276,11 +305,16 @@ const api = {
 			method: 'GET'
 		}),
 		
-		// 搜索商品
+		// 搜索商品（使用分页接口，传递keyword参数）
 		search: (keyword, params = {}) => request({
-			url: `/product/search?keyword=${keyword}`,
+			url: '/product/page',
 			method: 'GET',
-			data: params
+			data: {
+				keyword,
+				page: params.page || 1,
+				size: params.size || 10,
+				...params
+			}
 		}),
 		
 		// 收藏商品
@@ -370,8 +404,8 @@ const api = {
 	// 优惠券相关
 	coupon: {
 		// 获取可用优惠券
-		getAvailable: () => request({
-			url: '/coupon/available',
+		getAvailable: (userId) => request({
+			url: `/coupon/available${userId ? `?userId=${userId}` : ''}`,
 			method: 'GET'
 		}),
 		
@@ -447,6 +481,12 @@ const api = {
 			method: 'GET'
 		}),
 		
+		// 获取活动详情
+		getActivityDetail: (id) => request({
+			url: `/marketing/activity/${id}`,
+			method: 'GET'
+		}),
+		
 		// 参与活动
 		joinActivity: (id, data) => request({
 			url: `/marketing/activity/${id}/join`,
@@ -486,11 +526,38 @@ const api = {
 		})
 	},
 	
+	// 邀请相关
+	invite: {
+		// 获取邀请码
+		getCode: (userId) => request({
+			url: `/invite/code?userId=${userId}`,
+			method: 'GET'
+		}),
+		
+		// 绑定邀请码
+		bind: (userId, inviteCode) => request({
+			url: `/invite/bind?userId=${userId}&inviteCode=${inviteCode}`,
+			method: 'POST'
+		}),
+		
+		// 获取我邀请的好友列表
+		getMyInvites: (userId) => request({
+			url: `/invite/my-invites?userId=${userId}`,
+			method: 'GET'
+		})
+	},
+	
 	// 会员相关
 	member: {
 		// 获取会员信息
 		getInfo: (userId) => request({
 			url: `/member/info?userId=${userId}`,
+			method: 'GET'
+		}),
+		
+		// 获取会员统计数据
+		getStats: (userId) => request({
+			url: `/member/stats?userId=${userId}`,
 			method: 'GET'
 		}),
 		
@@ -505,6 +572,48 @@ const api = {
 			url: '/member/invite',
 			method: 'POST',
 			data
+		})
+	},
+	
+	// 用户设置相关
+	settings: {
+		// 获取用户设置
+		get: (userId) => request({
+			url: `/user/settings/${userId}`,
+			method: 'GET'
+		}),
+		
+		// 更新用户设置
+		update: (data) => request({
+			url: '/user/settings',
+			method: 'PUT',
+			data
+		})
+	},
+	
+	// 反馈相关
+	feedback: {
+		// 提交反馈
+		submit: (data) => request({
+			url: '/feedback/submit',
+			method: 'POST',
+			data
+		}),
+		
+		// 获取我的反馈列表
+		getList: (userId, params = {}) => {
+			const page = params.page || 1
+			const size = params.size || 10
+			return request({
+				url: `/feedback/list?userId=${userId}&page=${page}&size=${size}`,
+				method: 'GET'
+			})
+		},
+		
+		// 获取反馈详情
+		getDetail: (id) => request({
+			url: `/feedback/${id}`,
+			method: 'GET'
 		})
 	}
 }

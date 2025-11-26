@@ -21,29 +21,34 @@
 		<view class="category-nav">
 			<view class="category-item" v-for="(category, index) in categories" :key="category.id" @click="goToCategory(category.id)">
 				<text class="category-icon">{{ category.icon }}</text>
-				<text class="category-name">{{ category.name }}</text>
+				<view class="category-name-wrapper">
+					<text class="category-name">{{ category.name }}</text>
+					<view class="category-underline"></view>
+				</view>
 			</view>
 		</view>
 
 		<!-- 营销活动入口 -->
 		<view class="activity-section" v-if="activities.length > 0">
-			<view class="activity-list">
-				<view class="activity-item" v-for="activity in activities" :key="activity.id" @click="goToActivity(activity)">
-					<view class="activity-icon">{{ activity.icon }}</view>
-					<text class="activity-name">{{ activity.name }}</text>
-					<text class="activity-desc">{{ activity.desc }}</text>
+			<scroll-view class="activity-scroll" scroll-x="true" show-scrollbar="false">
+				<view class="activity-list">
+					<view class="activity-item" v-for="activity in activities" :key="activity.id" @click="goToActivity(activity)">
+						<view class="activity-icon">{{ activity.icon }}</view>
+						<text class="activity-name">{{ activity.name }}</text>
+						<text class="activity-desc">{{ activity.desc }}</text>
+					</view>
 				</view>
-			</view>
+			</scroll-view>
 		</view>
 
 		<!-- 个性化推荐 -->
-		<view class="personalized-section" v-if="personalizedProducts.length > 0">
+		<view class="personalized-section" v-if="limitedPersonalizedProducts.length > 0">
 			<view class="section-header">
 				<text class="section-title">🎯 为你推荐</text>
 				<text class="section-subtitle">基于你的购买历史</text>
 			</view>
 			<view class="product-grid">
-				<view class="product-item" v-for="product in personalizedProducts" :key="product.id" @click="goToProduct(product.id)">
+				<view class="product-item" v-for="product in limitedPersonalizedProducts" :key="product.id" @click="goToProduct(product.id)">
 					<image class="product-image" :src="product.image" mode="aspectFill"></image>
 					<view class="product-badge" v-if="product.reason">{{ product.reason }}</view>
 					<view class="product-info">
@@ -68,10 +73,10 @@
 		<view class="recommend-section">
 			<view class="section-header">
 				<text class="section-title">🔥 热门推荐</text>
-				<text class="section-more" @click="goToCategory()">更多 ></text>
+				<text class="section-more" @click="goToCategory()">更多 ›</text>
 			</view>
 			<view class="product-grid">
-				<view class="product-item" v-for="product in recommendProducts" :key="product.id" @click="goToProduct(product.id)">
+				<view class="product-item" v-for="product in limitedRecommendProducts" :key="product.id" @click="goToProduct(product.id)">
 					<image class="product-image" :src="product.image" mode="aspectFill"></image>
 					<view class="product-info">
 						<text class="product-name">{{ product.name }}</text>
@@ -95,7 +100,7 @@
 		<view class="special-section">
 			<view class="section-header">
 				<text class="section-title">💰 今日特惠</text>
-				<text class="section-more" @click="goToCategory()">更多 ></text>
+				<text class="section-more" @click="goToCategory()">更多 ›</text>
 			</view>
 			<scroll-view class="special-scroll" scroll-x="true" show-scrollbar="false">
 				<view class="special-item" v-for="product in specialProducts" :key="product.id" @click="goToProduct(product.id)">
@@ -115,7 +120,7 @@
 		<view class="new-section">
 			<view class="section-header">
 				<text class="section-title">✨ 新品推荐</text>
-				<text class="section-more" @click="goToCategory()">更多 ></text>
+				<text class="section-more" @click="goToCategory()">更多 ›</text>
 			</view>
 			<view class="new-list">
 				<view class="new-item" v-for="product in newProducts" :key="product.id" @click="goToProduct(product.id)">
@@ -156,6 +161,16 @@ export default {
 			newProducts: []
 		}
 	},
+	computed: {
+		// 限制为你推荐显示2个
+		limitedPersonalizedProducts() {
+			return this.personalizedProducts.slice(0, 2)
+		},
+		// 限制热门推荐显示4个
+		limitedRecommendProducts() {
+			return this.recommendProducts.slice(0, 4)
+		}
+	},
 	onLoad() {
 		this.loadData()
 	},
@@ -186,18 +201,10 @@ export default {
 		async loadBanners() {
 			try {
 				const res = await api.marketing.getBanners()
-				this.banners = res.data || [
-					{ id: 1, image: 'https://via.placeholder.com/750x300/FF6B35/FFFFFF?text=Banner+1', url: '' },
-					{ id: 2, image: 'https://via.placeholder.com/750x300/F7931E/FFFFFF?text=Banner+2', url: '' },
-					{ id: 3, image: 'https://via.placeholder.com/750x300/FF8C42/FFFFFF?text=Banner+3', url: '' }
-				]
+				this.banners = res.data || []
 			} catch (error) {
-				// 使用默认数据
-				this.banners = [
-					{ id: 1, image: 'https://via.placeholder.com/750x300/FF6B35/FFFFFF?text=Banner+1', url: '' },
-					{ id: 2, image: 'https://via.placeholder.com/750x300/F7931E/FFFFFF?text=Banner+2', url: '' },
-					{ id: 3, image: 'https://via.placeholder.com/750x300/FF8C42/FFFFFF?text=Banner+3', url: '' }
-				]
+				console.error('加载轮播图失败:', error)
+				this.banners = []
 			}
 		},
 
@@ -207,13 +214,8 @@ export default {
 				const res = await api.category.getList()
 				this.categories = res.data || []
 			} catch (error) {
-				// 使用默认数据
-				this.categories = [
-					{ id: 1, name: '奶茶', icon: '🧋' },
-					{ id: 2, name: '咖啡', icon: '☕' },
-					{ id: 3, name: '果茶', icon: '🍹' },
-					{ id: 4, name: '小食', icon: '🍰' }
-				]
+				console.error('加载分类失败:', error)
+				this.categories = []
 			}
 		},
 
@@ -223,30 +225,8 @@ export default {
 				const res = await api.marketing.getActivities()
 				this.activities = res.data || []
 			} catch (error) {
-				// 使用默认数据
-				this.activities = [
-					{
-						id: 1,
-						name: '优惠券中心',
-						desc: '领券享优惠',
-						icon: '🎫',
-						type: 'coupon'
-					},
-					{
-						id: 2,
-						name: '会员特权',
-						desc: '专享折扣',
-						icon: '👑',
-						type: 'member'
-					},
-					{
-						id: 3,
-						name: '积分商城',
-						desc: '积分兑好礼',
-						icon: '🎯',
-						type: 'points'
-					}
-				]
+				console.error('加载营销活动失败:', error)
+				this.activities = []
 			}
 		},
 
@@ -259,65 +239,22 @@ export default {
 					return
 				}
 
-				const res = await api.product.getPersonalized(userInfo.id, 4)
+				const res = await api.product.getPersonalized(userInfo.id, 2)
 				this.personalizedProducts = res.data || []
 			} catch (error) {
-				// 使用模拟数据
-				const userInfo = uni.getStorageSync('userInfo')
-				if (userInfo && userInfo.id) {
-					this.personalizedProducts = [
-						{
-							id: 1,
-							name: '珍珠奶茶',
-							description: '经典珍珠奶茶，香甜可口',
-							image: 'https://via.placeholder.com/200x200/FFB6C1/FFFFFF?text=Pearl+Tea',
-							price: 18.00,
-							memberPrice: 16.00,
-							sales: 999,
-							reason: '经常购买'
-						},
-						{
-							id: 2,
-							name: '芝士奶盖',
-							description: '浓郁芝士，层次丰富',
-							image: 'https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Cheese+Tea',
-							price: 22.00,
-							memberPrice: 20.00,
-							sales: 888,
-							reason: '相似口味'
-						}
-					]
-				}
+				console.error('加载个性化推荐失败:', error)
+				this.personalizedProducts = []
 			}
 		},
 
 		// 加载推荐商品
 		async loadRecommendProducts() {
 			try {
-				const res = await api.product.getRecommend(6)
+				const res = await api.product.getRecommend(4)
 				this.recommendProducts = res.data || []
 			} catch (error) {
-				// 使用默认数据
-				this.recommendProducts = [
-					{
-						id: 1,
-						name: '珍珠奶茶',
-						description: '经典珍珠奶茶，香甜可口',
-						image: 'https://via.placeholder.com/200x200/FFB6C1/FFFFFF?text=Pearl+Tea',
-						price: 18.00,
-						memberPrice: 16.00,
-						sales: 999
-					},
-					{
-						id: 2,
-						name: '芝士奶盖',
-						description: '浓郁芝士，层次丰富',
-						image: 'https://via.placeholder.com/200x200/FFD700/FFFFFF?text=Cheese+Tea',
-						price: 22.00,
-						memberPrice: 20.00,
-						sales: 888
-					}
-				]
+				console.error('加载推荐商品失败:', error)
+				this.recommendProducts = []
 			}
 		},
 
@@ -327,23 +264,8 @@ export default {
 				const res = await api.product.getList({ special: true, limit: 10 })
 				this.specialProducts = res.data?.records || []
 			} catch (error) {
-				// 使用默认数据
-				this.specialProducts = [
-					{
-						id: 3,
-						name: '柠檬蜂蜜茶',
-						image: 'https://via.placeholder.com/200x200/FFFF99/333333?text=Lemon+Tea',
-						price: 15.00,
-						originalPrice: 20.00
-					},
-					{
-						id: 4,
-						name: '红豆奶茶',
-						image: 'https://via.placeholder.com/200x200/CD5C5C/FFFFFF?text=Red+Bean',
-						price: 16.00,
-						originalPrice: 22.00
-					}
-				]
+				console.error('加载特惠商品失败:', error)
+				this.specialProducts = []
 			}
 		},
 
@@ -353,23 +275,8 @@ export default {
 				const res = await api.product.getList({ isNew: true, limit: 5 })
 				this.newProducts = res.data?.records || []
 			} catch (error) {
-				// 使用默认数据
-				this.newProducts = [
-					{
-						id: 5,
-						name: '抹茶拿铁',
-						description: '日式抹茶，香醇浓郁',
-						image: 'https://via.placeholder.com/200x200/90EE90/333333?text=Matcha+Latte',
-						price: 25.00
-					},
-					{
-						id: 6,
-						name: '草莓奶昔',
-						description: '新鲜草莓，清甜可口',
-						image: 'https://via.placeholder.com/200x200/FF69B4/FFFFFF?text=Strawberry',
-						price: 20.00
-					}
-				]
+				console.error('加载新品失败:', error)
+				this.newProducts = []
 			}
 		},
 
@@ -418,6 +325,18 @@ export default {
 				case 'points':
 					uni.navigateTo({
 						url: '/pages/points/points'
+					})
+					break
+				case 'new_product':
+					// 新品抄茶 - 跳转到活动详情页
+					uni.navigateTo({
+						url: `/pages/activity/activity?id=${activity.id}&type=new_product`
+					})
+					break
+				case 'buy_one_get_one':
+					// 买一送一 - 跳转到活动详情页
+					uni.navigateTo({
+						url: `/pages/activity/activity?id=${activity.id}&type=buy_one_get_one`
 					})
 					break
 				default:
@@ -515,6 +434,47 @@ export default {
 	border-radius: 24rpx;
 	box-shadow: 0 8rpx 32rpx rgba(0, 0, 0, 0.08);
 	border: 1rpx solid rgba(255, 255, 255, 0.2);
+	position: relative;
+	overflow: hidden;
+}
+
+/* 添加顶部装饰条 */
+.category-nav::before {
+	content: '';
+	position: absolute;
+	top: 0;
+	left: 0;
+	right: 0;
+	height: 6rpx;
+	background: linear-gradient(90deg, #ff6b35, #f7931e, #ff8c42, #ff6b35);
+	background-size: 200% 100%;
+	animation: gradientMove 3s ease infinite;
+}
+
+/* 添加底部装饰点 */
+.category-nav::after {
+	content: '';
+	position: absolute;
+	bottom: 10rpx;
+	left: 50%;
+	transform: translateX(-50%);
+	width: 80rpx;
+	height: 6rpx;
+	background: linear-gradient(90deg, transparent, #ff6b35, transparent);
+	border-radius: 3rpx;
+	opacity: 0.3;
+}
+
+@keyframes gradientMove {
+	0% {
+		background-position: 0% 50%;
+	}
+	50% {
+		background-position: 100% 50%;
+	}
+	100% {
+		background-position: 0% 50%;
+	}
 }
 
 .category-item {
@@ -528,21 +488,25 @@ export default {
 	overflow: hidden;
 }
 
+/* 添加背景装饰圆 */
 .category-item::before {
 	content: '';
 	position: absolute;
-	top: 0;
-	left: 0;
-	right: 0;
-	bottom: 0;
-	background: linear-gradient(135deg, #ff6b35, #f7931e);
+	top: 50%;
+	left: 50%;
+	transform: translate(-50%, -50%);
+	width: 100rpx;
+	height: 100rpx;
+	background: linear-gradient(135deg, rgba(255, 107, 53, 0.1), rgba(247, 147, 30, 0.1));
+	border-radius: 50%;
 	opacity: 0;
-	transition: opacity 0.3s ease;
-	border-radius: 20rpx;
+	transition: all 0.3s ease;
+	z-index: 0;
 }
 
 .category-item:active::before {
-	opacity: 0.1;
+	opacity: 1;
+	transform: translate(-50%, -50%) scale(1.2);
 }
 
 .category-item:active {
@@ -555,14 +519,119 @@ export default {
 	position: relative;
 	z-index: 1;
 	filter: drop-shadow(0 2rpx 8rpx rgba(0, 0, 0, 0.1));
+	animation: iconFloat 3s ease-in-out infinite;
+}
+
+/* 图标浮动动画 */
+@keyframes iconFloat {
+	0%, 100% {
+		transform: translateY(0);
+	}
+	50% {
+		transform: translateY(-4rpx);
+	}
+}
+
+/* 为每个分类图标添加不同的动画延迟 */
+.category-item:nth-child(1) .category-icon {
+	animation-delay: 0s;
+}
+
+.category-item:nth-child(2) .category-icon {
+	animation-delay: 0.2s;
+}
+
+.category-item:nth-child(3) .category-icon {
+	animation-delay: 0.4s;
+}
+
+.category-item:nth-child(4) .category-icon {
+	animation-delay: 0.6s;
+}
+
+.category-name-wrapper {
+	display: flex;
+	flex-direction: column;
+	align-items: center;
+	gap: 8rpx;
+	position: relative;
+	z-index: 1;
 }
 
 .category-name {
-	font-size: 24rpx;
+	font-size: 26rpx;
 	color: #333;
-	font-weight: 500;
+	font-weight: 600;
 	position: relative;
-	z-index: 1;
+	padding: 8rpx 20rpx;
+	background: linear-gradient(135deg, rgba(255, 107, 53, 0.08), rgba(247, 147, 30, 0.08));
+	border-radius: 20rpx;
+	border: 1rpx solid rgba(255, 107, 53, 0.15);
+	box-shadow: 0 2rpx 8rpx rgba(255, 107, 53, 0.1);
+	transition: all 0.3s ease;
+}
+
+/* 文字前后的小装饰点 */
+.category-name::before,
+.category-name::after {
+	content: '◆';
+	position: absolute;
+	top: 50%;
+	transform: translateY(-50%);
+	font-size: 16rpx;
+	color: #ff6b35;
+	opacity: 0.5;
+}
+
+.category-name::before {
+	left: 4rpx;
+}
+
+.category-name::after {
+	right: 4rpx;
+}
+
+/* 点击时的效果 */
+.category-item:active .category-name {
+	background: linear-gradient(135deg, rgba(255, 107, 53, 0.15), rgba(247, 147, 30, 0.15));
+	border-color: rgba(255, 107, 53, 0.3);
+	transform: scale(0.95);
+	box-shadow: 0 4rpx 12rpx rgba(255, 107, 53, 0.2);
+}
+
+.category-item:active .category-name::before,
+.category-item:active .category-name::after {
+	opacity: 1;
+	animation: sparkle 0.6s ease;
+}
+
+/* 文字下方的装饰线 */
+.category-underline {
+	width: 50rpx;
+	height: 3rpx;
+	background: linear-gradient(90deg, transparent, #ff6b35, transparent);
+	border-radius: 2rpx;
+	animation: underlinePulse 2s ease-in-out infinite;
+}
+
+@keyframes underlinePulse {
+	0%, 100% {
+		opacity: 0.3;
+		transform: scaleX(0.8);
+	}
+	50% {
+		opacity: 0.8;
+		transform: scaleX(1);
+	}
+}
+
+@keyframes sparkle {
+	0%, 100% {
+		transform: translateY(-50%) scale(1);
+	}
+	50% {
+		transform: translateY(-50%) scale(1.5);
+	}
 }
 
 /* 营销活动 */
@@ -576,22 +645,27 @@ export default {
 	border: 1rpx solid rgba(255, 255, 255, 0.2);
 }
 
+.activity-scroll {
+	width: 100%;
+	white-space: nowrap;
+}
+
 .activity-list {
-	display: flex;
-	justify-content: space-around;
+	display: inline-flex;
 	gap: 20rpx;
 }
 
 .activity-item {
-	flex: 1;
-	display: flex;
+	display: inline-flex;
 	flex-direction: column;
 	align-items: center;
+	width: 200rpx;
 	padding: 30rpx 20rpx;
 	border-radius: 20rpx;
 	background: linear-gradient(135deg, rgba(255, 107, 53, 0.1) 0%, rgba(247, 147, 30, 0.1) 100%);
 	border: 2rpx solid rgba(255, 107, 53, 0.2);
 	transition: all 0.3s ease;
+	flex-shrink: 0;
 }
 
 .activity-item:active {
@@ -722,11 +796,10 @@ export default {
 	display: flex;
 	flex-wrap: wrap;
 	justify-content: space-between;
-	gap: 20rpx;
 }
 
 .product-item {
-	width: calc(50% - 10rpx);
+	width: 48%;
 	background: rgba(255, 255, 255, 0.9);
 	border-radius: 20rpx;
 	overflow: hidden;
@@ -734,6 +807,7 @@ export default {
 	border: 1rpx solid rgba(255, 255, 255, 0.3);
 	transition: all 0.3s ease;
 	position: relative;
+	margin-bottom: 20rpx;
 }
 
 .product-item:active {
