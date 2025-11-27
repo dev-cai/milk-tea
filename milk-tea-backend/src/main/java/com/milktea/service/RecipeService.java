@@ -11,6 +11,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -172,7 +173,7 @@ public class RecipeService {
                 analysis.put("profit", product.getPrice().subtract(totalCost));
                 analysis.put("profitMargin", 
                     product.getPrice().compareTo(BigDecimal.ZERO) > 0 ? 
-                    product.getPrice().subtract(totalCost).divide(product.getPrice(), 4, BigDecimal.ROUND_HALF_UP).multiply(new BigDecimal("100")) : 
+                    product.getPrice().subtract(totalCost).divide(product.getPrice(), 4, RoundingMode.HALF_UP).multiply(new BigDecimal("100")) : 
                     BigDecimal.ZERO);
             }
             

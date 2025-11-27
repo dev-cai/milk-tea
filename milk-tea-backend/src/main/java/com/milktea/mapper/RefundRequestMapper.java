@@ -6,7 +6,6 @@ import org.apache.ibatis.annotations.Mapper;
 
 /**
  * 退款申请Mapper
- * @author MilkTea Team
  */
 @Mapper
 public interface RefundRequestMapper extends BaseMapper<RefundRequest> {

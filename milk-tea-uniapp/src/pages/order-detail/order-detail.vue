@@ -134,14 +134,17 @@
 			<view class="action-btn primary" v-if="orderInfo.status === 0" @click="payOrder">
 				<text>立即支付</text>
 			</view>
+			<view class="action-btn secondary" v-if="orderInfo.status === 4" @click="applyComplaint">
+				<text>投诉</text>
+			</view>
+			<view class="action-btn secondary" v-if="orderInfo.status >= 1 && orderInfo.status <= 4" @click="applyRefund">
+				<text>申请退款</text>
+			</view>
 			<view class="action-btn primary" v-if="orderInfo.status === 4" @click="evaluateOrder">
 				<text>评价订单</text>
 			</view>
 			<view class="action-btn primary" v-if="orderInfo.status === 4" @click="reorder">
 				<text>再来一单</text>
-			</view>
-			<view class="action-btn secondary" v-if="orderInfo.status >= 1 && orderInfo.status <= 4" @click="applyRefund">
-				<text>申请退款</text>
 			</view>
 		</view>
 	</view>
@@ -338,7 +341,14 @@ export default {
 		// 申请退款
 		applyRefund() {
 			uni.navigateTo({
-				url: `/pages/refund/refund?orderId=${this.orderId}`
+				url: `/pages/order-detail/refund?orderId=${this.orderId}`
+			})
+		},
+
+		// 申请投诉
+		applyComplaint() {
+			uni.navigateTo({
+				url: `/pages/order-detail/complaint?orderId=${this.orderId}`
 			})
 		},
 

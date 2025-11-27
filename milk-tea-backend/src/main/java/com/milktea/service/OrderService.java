@@ -8,6 +8,7 @@ import com.milktea.dto.OrderCreateRequest;
 import com.milktea.entity.Order;
 import com.milktea.entity.OrderItem;
 import com.milktea.entity.Product;
+import com.milktea.entity.RefundRequest;
 import com.milktea.exception.BusinessException;
 import com.milktea.mapper.OrderItemMapper;
 import com.milktea.mapper.OrderMapper;
@@ -35,12 +36,19 @@ public class OrderService {
     private final OrderItemMapper orderItemMapper;
     private final ProductMapper productMapper;
     private final com.milktea.mapper.UserMapper userMapper;
+    private final com.milktea.mapper.ComplaintMapper complaintMapper;
+    private final com.milktea.mapper.RefundRequestMapper refundRequestMapper;
     
-    public OrderService(OrderMapper orderMapper, OrderItemMapper orderItemMapper, ProductMapper productMapper, com.milktea.mapper.UserMapper userMapper) {
+    public OrderService(OrderMapper orderMapper, OrderItemMapper orderItemMapper, ProductMapper productMapper, 
+                       com.milktea.mapper.UserMapper userMapper,
+                       com.milktea.mapper.ComplaintMapper complaintMapper,
+                       com.milktea.mapper.RefundRequestMapper refundRequestMapper) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.productMapper = productMapper;
         this.userMapper = userMapper;
+        this.complaintMapper = complaintMapper;
+        this.refundRequestMapper = refundRequestMapper;
     }
     
     /**
@@ -258,6 +266,7 @@ public class OrderService {
     /**
      * 申请退款
      */
+    @Transactional
     public Result<String> refundOrder(Long orderId, Long userId, String reason) {
         Order order = orderMapper.selectById(orderId);
         if (order == null) {
@@ -268,14 +277,29 @@ public class OrderService {
             throw new BusinessException("无权操作此订单");
         }
         
-        if (order.getStatus() != 4) {
-            throw new BusinessException("只有已完成的订单才能申请退款");
+        // 允许已支付(1)、制作中(2)、待取餐(3)、已完成(4)的订单申请退款
+        if (order.getStatus() < 1 || order.getStatus() > 4) {
+            throw new BusinessException("当前订单状态不允许申请退款");
         }
         
+        // 创建退款申请记录
+        RefundRequest refundRequest = new RefundRequest();
+        refundRequest.setOrderId(order.getId());
+        refundRequest.setOrderNo(order.getOrderNo());
+        refundRequest.setUserId(userId);
+        refundRequest.setCustomerName(order.getUsername());
+        refundRequest.setRefundAmount(order.getPayAmount());
+        refundRequest.setReason(reason);
+        refundRequest.setStatus(0); // 待处理
+        
+        refundRequestMapper.insert(refundRequest);
+        
+        // 更新订单状态为退款中
         order.setStatus(6); // 申请退款
         order.setRefundReason(reason);
         orderMapper.updateById(order);
         
+        log.info("退款申请成功: 订单ID={}, 退款金额={}", orderId, order.getPayAmount());
         return Result.success("退款申请提交成功");
     }
     
@@ -343,4 +367,89 @@ public class OrderService {
         String random = String.valueOf((int) (Math.random() * 1000));
         return "MT" + timestamp + String.format("%03d", Integer.parseInt(random));
     }
+    
+    /**
+     * 提交投诉
+     */
+    @Transactional
+    public Result<String> submitComplaint(Map<String, Object> request) {
+        try {
+            Long orderId = Long.valueOf(request.get("orderId").toString());
+            String orderNo = request.get("orderNo").toString();
+            Long userId = Long.valueOf(request.get("userId").toString());
+            String customerName = request.get("customerName").toString();
+            Integer complaintType = Integer.valueOf(request.get("complaintType").toString());
+            String content = request.get("content").toString();
+            String images = request.getOrDefault("images", "").toString();
+            
+            // 验证订单是否存在
+            Order order = orderMapper.selectById(orderId);
+            if (order == null) {
+                throw new BusinessException("订单不存在");
+            }
+            
+            // 创建投诉记录
+            com.milktea.entity.Complaint complaint = new com.milktea.entity.Complaint();
+            complaint.setOrderId(orderId);
+            complaint.setOrderNo(orderNo);
+            complaint.setUserId(userId);
+            complaint.setCustomerName(customerName);
+            complaint.setComplaintType(complaintType);
+            complaint.setContent(content);
+            complaint.setImages(images);
+            complaint.setStatus(0); // 待处理
+            
+            complaintMapper.insert(complaint);
+            
+            log.info("投诉提交成功: 订单ID={}, 投诉类型={}", orderId, complaintType);
+            return Result.success("投诉提交成功");
+        } catch (Exception e) {
+            log.error("提交投诉失败", e);
+            return Result.error("提交投诉失败: " + e.getMessage());
+        }
+    }
+    
+    /**
+     * 获取用户投诉列表
+     */
+    public Result<PageResult<Map<String, Object>>> getUserComplaints(Long userId, Integer page, Integer size) {
+        try {
+            Page<com.milktea.entity.Complaint> pageObj = new Page<>(page, size);
+            
+            LambdaQueryWrapper<com.milktea.entity.Complaint> queryWrapper = new LambdaQueryWrapper<>();
+            queryWrapper.eq(com.milktea.entity.Complaint::getUserId, userId);
+            queryWrapper.orderByDesc(com.milktea.entity.Complaint::getCreateTime);
+            
+            Page<com.milktea.entity.Complaint> result = complaintMapper.selectPage(pageObj, queryWrapper);
+            
+            // 转换为Map格式
+            List<Map<String, Object>> records = result.getRecords().stream().map(complaint -> {
+                Map<String, Object> map = new HashMap<>();
+                map.put("id", complaint.getId());
+                map.put("orderId", complaint.getOrderId());
+                map.put("orderNo", complaint.getOrderNo());
+                map.put("complaintType", complaint.getComplaintType());
+                map.put("content", complaint.getContent());
+                map.put("images", complaint.getImages());
+                map.put("status", complaint.getStatus());
+                map.put("response", complaint.getResponse());
+                map.put("processTime", complaint.getProcessTime());
+                map.put("createTime", complaint.getCreateTime());
+                return map;
+            }).toList();
+            
+            PageResult<Map<String, Object>> pageResult = new PageResult<>(
+                records,
+                result.getTotal(),
+                result.getCurrent(),
+                result.getSize()
+            );
+            
+            return Result.success("获取成功", pageResult);
+        } catch (Exception e) {
+            log.error("获取投诉列表失败", e);
+            return Result.error("获取失败");
+        }
+    }
+    
 }

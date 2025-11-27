@@ -847,6 +847,7 @@ INSERT INTO `store` (`name`, `address`, `phone`, `manager`, `manager_phone`, `bu
 
 -- ========================================
 -- 系统配置�?-- ========================================
+
 DROP TABLE IF EXISTS `system_config`;
 CREATE TABLE `system_config` (
   `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '配置ID',
@@ -1001,4 +1002,420 @@ UPDATE points_product SET image = 'https://picsum.photos/300/300?random=24' WHER
 UPDATE points_product SET image = 'https://picsum.photos/300/300?random=25' WHERE id = 5;
 UPDATE points_product SET image = 'https://picsum.photos/300/300?random=26' WHERE id = 6;
 
-SELECT '商品图片已更新为在线地址�? AS message;
+
+
+-- ========================================
+-- 创建登录记录表
+-- ========================================
+
+USE `milk_tea`;
+
+-- 创建登录记录表
+DROP TABLE IF EXISTS `login_history`;
+CREATE TABLE `login_history` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '记录ID',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `device` varchar(100) DEFAULT NULL COMMENT '登录设备',
+  `device_type` varchar(50) DEFAULT NULL COMMENT '设备类型：ios/android/web/miniapp',
+  `ip` varchar(50) DEFAULT NULL COMMENT 'IP地址',
+  `location` varchar(200) DEFAULT NULL COMMENT '登录地点',
+  `login_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '登录时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_login_time` (`login_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='登录记录表';
+
+-- 插入一些测试数据
+INSERT INTO `login_history` (`user_id`, `device`, `device_type`, `ip`, `location`, `login_time`) VALUES
+(2, 'iPhone 13', 'ios', '192.168.1.100', '广东省深圳市', '2024-11-26 14:30:25'),
+(2, 'Android', 'android', '192.168.1.101', '广东省深圳市', '2024-11-25 09:15:10'),
+(2, '微信小程序', 'miniapp', '192.168.1.102', '广东省深圳市', '2024-11-24 20:45:33'),
+(3, 'iPhone 12', 'ios', '192.168.1.103', '北京市朝阳区', '2024-11-26 10:20:15'),
+(3, 'Web浏览器', 'web', '192.168.1.104', '北京市朝阳区', '2024-11-25 16:30:00');
+
+
+
+-- ========================================
+-- 为用户表添加会员号字段
+-- ========================================
+
+USE `milk_tea`;
+
+-- 添加会员号字段
+ALTER TABLE `user` ADD COLUMN `member_no` varchar(50) DEFAULT NULL COMMENT '会员号' AFTER `member_level`;
+
+-- 为现有用户生成会员号（格式：MT + 年月日 + 6位随机数）
+-- 使用用户ID作为基础生成唯一会员号
+UPDATE `user` SET `member_no` = CONCAT('MT', DATE_FORMAT(create_time, '%Y%m%d'), LPAD(id, 6, '0')) WHERE `member_no` IS NULL;
+
+-- 为会员号字段添加唯一索引
+ALTER TABLE `user` ADD UNIQUE KEY `uk_member_no` (`member_no`);
+
+
+-- ========================================
+-- 添加更多商品数据
+-- 为各个分类补充商品
+-- ========================================
+
+USE `milk_tea`;
+
+-- ========================================
+-- 奶茶类商品 (category_id = 4)
+-- ========================================
+INSERT INTO `product` (`name`, `category_id`, `description`, `image`, `price`, `member_price`, `cost`, `stock`, `sales`, `nutrition`, `status`, `is_recommend`, `sort`) VALUES
+('布蕾奶茶', 4, '焦糖布蕾风味，香甜丝滑', 'https://picsum.photos/400/400?random=11', 16.00, 14.40, 10.50, 100, 88, '热量：420kcal', 1, 1, 11),
+('仙草奶茶', 4, '清凉仙草，解暑佳品', 'https://picsum.photos/400/400?random=12', 13.00, 11.70, 8.50, 100, 95, '热量：380kcal', 1, 0, 12),
+('双拼奶茶', 4, '珍珠+椰果双重口感', 'https://picsum.photos/400/400?random=13', 15.00, 13.50, 9.50, 100, 102, '热量：430kcal', 1, 1, 13),
+('焦糖奶茶', 4, '浓郁焦糖香，甜而不腻', 'https://picsum.photos/400/400?random=14', 14.00, 12.60, 9.00, 100, 76, '热量：410kcal', 1, 0, 14),
+('巧克力奶茶', 4, '丝滑巧克力，醇厚浓香', 'https://picsum.photos/400/400?random=15', 16.00, 14.40, 10.50, 100, 84, '热量：450kcal', 1, 1, 15),
+('椰果奶茶', 4, 'Q弹椰果，清爽可口', 'https://picsum.photos/400/400?random=16', 13.00, 11.70, 8.50, 100, 91, '热量：390kcal', 1, 0, 16),
+('抹茶奶茶', 4, '日式抹茶，清新淡雅', 'https://picsum.photos/400/400?random=17', 15.00, 13.50, 10.00, 100, 87, '热量：400kcal', 1, 1, 17),
+('紫薯奶茶', 4, '香甜紫薯，营养健康', 'https://picsum.photos/400/400?random=18', 15.00, 13.50, 10.00, 100, 69, '热量：420kcal', 1, 0, 18);
+
+-- ========================================
+-- 果茶类商品 (category_id = 5)
+-- ========================================
+INSERT INTO `product` (`name`, `category_id`, `description`, `image`, `price`, `member_price`, `cost`, `stock`, `sales`, `nutrition`, `status`, `is_recommend`, `sort`) VALUES
+('草莓果茶', 5, '新鲜草莓，酸甜可口', 'https://picsum.photos/400/400?random=21', 18.00, 16.20, 12.00, 100, 125, '热量：180kcal', 1, 1, 21),
+('芒果果茶', 5, '香甜芒果，热带风情', 'https://picsum.photos/400/400?random=22', 18.00, 16.20, 12.00, 100, 118, '热量：190kcal', 1, 1, 22),
+('西瓜果茶', 5, '清爽西瓜，夏日必备', 'https://picsum.photos/400/400?random=23', 16.00, 14.40, 10.50, 100, 96, '热量：160kcal', 1, 0, 23),
+('蜜桃果茶', 5, '香甜蜜桃，果香浓郁', 'https://picsum.photos/400/400?random=24', 17.00, 15.30, 11.00, 100, 108, '热量：170kcal', 1, 1, 24),
+('葡萄柚果茶', 5, '清新葡萄柚，酸甜平衡', 'https://picsum.photos/400/400?random=25', 17.00, 15.30, 11.00, 100, 89, '热量：150kcal', 1, 0, 25),
+('荔枝果茶', 5, '香甜荔枝，清爽怡人', 'https://picsum.photos/400/400?random=26', 18.00, 16.20, 12.00, 100, 94, '热量：180kcal', 1, 1, 26),
+('橙子果茶', 5, '新鲜橙子，维C满满', 'https://picsum.photos/400/400?random=27', 15.00, 13.50, 10.00, 100, 102, '热量：140kcal', 1, 0, 27),
+('奇异果茶', 5, '酸甜奇异果，营养丰富', 'https://picsum.photos/400/400?random=28', 17.00, 15.30, 11.00, 100, 78, '热量：160kcal', 1, 0, 28);
+
+-- ========================================
+-- 奶盖茶类商品 (category_id = 6)
+-- ========================================
+INSERT INTO `product` (`name`, `category_id`, `description`, `image`, `price`, `member_price`, `cost`, `stock`, `sales`, `nutrition`, `status`, `is_recommend`, `sort`) VALUES
+('草莓奶盖', 6, '草莓果茶配芝士奶盖', 'https://picsum.photos/400/400?random=31', 20.00, 18.00, 13.00, 100, 115, '热量：380kcal', 1, 1, 31),
+('芒果奶盖', 6, '芒果果茶配芝士奶盖', 'https://picsum.photos/400/400?random=32', 20.00, 18.00, 13.00, 100, 108, '热量：390kcal', 1, 1, 32),
+('乌龙奶盖', 6, '乌龙茶配芝士奶盖', 'https://picsum.photos/400/400?random=33', 19.00, 17.10, 12.50, 100, 97, '热量：360kcal', 1, 0, 33),
+('茉莉奶盖', 6, '茉莉绿茶配芝士奶盖', 'https://picsum.photos/400/400?random=34', 19.00, 17.10, 12.50, 100, 89, '热量：350kcal', 1, 0, 34),
+('红茶奶盖', 6, '红茶配芝士奶盖', 'https://picsum.photos/400/400?random=35', 18.00, 16.20, 12.00, 100, 112, '热量：340kcal', 1, 1, 35),
+('抹茶奶盖', 6, '抹茶配芝士奶盖', 'https://picsum.photos/400/400?random=36', 20.00, 18.00, 13.00, 100, 95, '热量：370kcal', 1, 1, 36),
+('蜜桃奶盖', 6, '蜜桃果茶配芝士奶盖', 'https://picsum.photos/400/400?random=37', 20.00, 18.00, 13.00, 100, 86, '热量：380kcal', 1, 0, 37);
+
+-- ========================================
+-- 咖啡类商品 (category_id = 2)
+-- ========================================
+INSERT INTO `product` (`name`, `category_id`, `description`, `image`, `price`, `member_price`, `cost`, `stock`, `sales`, `nutrition`, `status`, `is_recommend`, `sort`) VALUES
+('卡布奇诺', 2, '经典意式咖啡', 'https://picsum.photos/400/400?random=41', 18.00, 16.20, 12.00, 100, 78, '热量：180kcal', 1, 0, 41),
+('摩卡咖啡', 2, '巧克力风味咖啡', 'https://picsum.photos/400/400?random=42', 20.00, 18.00, 13.00, 100, 85, '热量：220kcal', 1, 1, 42),
+('焦糖玛奇朵', 2, '焦糖风味拿铁', 'https://picsum.photos/400/400?random=43', 22.00, 19.80, 14.00, 100, 92, '热量：250kcal', 1, 1, 43),
+('香草拿铁', 2, '香草风味拿铁', 'https://picsum.photos/400/400?random=44', 19.00, 17.10, 12.50, 100, 73, '热量：200kcal', 1, 0, 44),
+('冰美式', 2, '冰镇美式咖啡', 'https://picsum.photos/400/400?random=45', 15.00, 13.50, 10.00, 100, 88, '热量：10kcal', 1, 0, 45),
+('冰拿铁', 2, '冰镇拿铁咖啡', 'https://picsum.photos/400/400?random=46', 18.00, 16.20, 12.00, 100, 95, '热量：180kcal', 1, 1, 46);
+
+-- ========================================
+-- 小食类商品 (category_id = 3)
+-- ========================================
+INSERT INTO `product` (`name`, `category_id`, `description`, `image`, `price`, `member_price`, `cost`, `stock`, `sales`, `nutrition`, `status`, `is_recommend`, `sort`) VALUES
+('提拉米苏', 3, '经典意式甜点', 'https://picsum.photos/400/400?random=51', 28.00, 25.20, 18.00, 50, 45, '热量：380kcal', 1, 1, 51),
+('布朗尼', 3, '浓郁巧克力蛋糕', 'https://picsum.photos/400/400?random=52', 22.00, 19.80, 14.00, 50, 52, '热量：320kcal', 1, 0, 52),
+('抹茶蛋糕', 3, '清新抹茶风味', 'https://picsum.photos/400/400?random=53', 25.00, 22.50, 16.00, 50, 38, '热量：300kcal', 1, 1, 53),
+('草莓蛋糕', 3, '新鲜草莓蛋糕', 'https://picsum.photos/400/400?random=54', 26.00, 23.40, 17.00, 50, 42, '热量：310kcal', 1, 0, 54),
+('曲奇饼干', 3, '香脆曲奇', 'https://picsum.photos/400/400?random=55', 15.00, 13.50, 9.00, 100, 67, '热量：180kcal', 1, 0, 55),
+('马卡龙', 3, '法式马卡龙', 'https://picsum.photos/400/400?random=56', 18.00, 16.20, 11.00, 80, 58, '热量：150kcal', 1, 1, 56),
+('泡芙', 3, '奶油泡芙', 'https://picsum.photos/400/400?random=57', 12.00, 10.80, 7.00, 80, 71, '热量：200kcal', 1, 0, 57),
+('蛋挞', 3, '葡式蛋挞', 'https://picsum.photos/400/400?random=58', 8.00, 7.20, 4.50, 100, 89, '热量：220kcal', 1, 1, 58);
+
+-- ========================================
+-- 更新商品图片为在线地址
+-- ========================================
+UPDATE `product` SET `image` = CONCAT('https://picsum.photos/400/400?random=', `id`) WHERE `id` >= 11;
+
+-- ========================================
+-- 统计信息
+-- ========================================
+SELECT '商品数据添加完成！' AS message;
+SELECT CONCAT('奶茶类商品: ', COUNT(*)) AS count FROM product WHERE category_id = 4;
+SELECT CONCAT('果茶类商品: ', COUNT(*)) AS count FROM product WHERE category_id = 5;
+SELECT CONCAT('奶盖茶类商品: ', COUNT(*)) AS count FROM product WHERE category_id = 6;
+SELECT CONCAT('咖啡类商品: ', COUNT(*)) AS count FROM product WHERE category_id = 2;
+SELECT CONCAT('小食类商品: ', COUNT(*)) AS count FROM product WHERE category_id = 3;
+SELECT CONCAT('商品总数: ', COUNT(*)) AS total FROM product WHERE deleted = 0;
+
+
+
+-- ========================================
+-- 积分系统相关表
+-- ========================================
+
+USE `milk_tea`;
+
+-- 先删除已存在的表（如果之前创建失败）
+DROP TABLE IF EXISTS `points_history`;
+DROP TABLE IF EXISTS `checkin_record`;
+DROP TABLE IF EXISTS `invite_record`;
+
+-- 积分历史表
+CREATE TABLE IF NOT EXISTS `points_history` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '记录ID',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `points` int(11) NOT NULL COMMENT '积分变动（正数为增加，负数为减少）',
+  `type` int(11) NOT NULL COMMENT '类型：1-购物，2-签到，3-邀请，4-评价，5-生日，6-兑换，7-过期',
+  `order_id` bigint(20) DEFAULT NULL COMMENT '关联订单ID',
+  `description` varchar(255) DEFAULT NULL COMMENT '描述',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='积分历史表';
+
+-- 签到记录表
+CREATE TABLE IF NOT EXISTS `checkin_record` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '记录ID',
+  `user_id` bigint(20) NOT NULL COMMENT '用户ID',
+  `checkin_date` date NOT NULL COMMENT '签到日期',
+  `continuous_days` int(11) DEFAULT '1' COMMENT '连续签到天数',
+  `points` int(11) DEFAULT '10' COMMENT '获得积分',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_date` (`user_id`, `checkin_date`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='签到记录表';
+
+-- 邀请记录表
+CREATE TABLE IF NOT EXISTS `invite_record` (
+  `id` bigint(20) NOT NULL AUTO_INCREMENT COMMENT '记录ID',
+  `inviter_id` bigint(20) NOT NULL COMMENT '邀请人ID',
+  `invitee_id` bigint(20) NOT NULL COMMENT '被邀请人ID',
+  `status` int(11) DEFAULT '0' COMMENT '状态：0-待注册，1-已注册，2-已奖励',
+  `points` int(11) DEFAULT '50' COMMENT '奖励积分',
+  `create_time` datetime DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `reward_time` datetime DEFAULT NULL COMMENT '奖励时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_inviter_id` (`inviter_id`),
+  KEY `idx_invitee_id` (`invitee_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='邀请记录表';
+
+-- 插入测试积分历史数据
+INSERT INTO `points_history` (`user_id`, `points`, `type`, `description`, `create_time`) VALUES
+(2, 100, 1, '购物消费获得积分', '2024-11-20 10:30:00'),
+(2, 10, 2, '每日签到', '2024-11-21 08:00:00'),
+(2, 50, 3, '邀请好友注册', '2024-11-22 14:20:00'),
+(2, 10, 2, '每日签到', '2024-11-22 08:00:00'),
+(2, 5, 4, '订单评价', '2024-11-23 16:30:00');
+
+-- 插入测试签到记录
+INSERT INTO `checkin_record` (`user_id`, `checkin_date`, `continuous_days`, `points`) VALUES
+(2, '2024-11-21', 1, 10),
+(2, '2024-11-22', 2, 10),
+(2, '2024-11-23', 3, 10);
+
+-- 插入测试邀请记录
+INSERT INTO `invite_record` (`inviter_id`, `invitee_id`, `status`, `points`, `create_time`, `reward_time`) VALUES
+(2, 3, 2, 50, '2024-11-22 14:20:00', '2024-11-22 14:21:00');
+
+-- 创建存储过程前先删除已存在的
+DROP PROCEDURE IF EXISTS `update_member_level`;
+
+DELIMITER $$
+CREATE PROCEDURE update_member_level(IN p_user_id BIGINT)
+BEGIN
+    DECLARE v_points INT;
+    DECLARE v_new_level INT;
+    
+    -- 获取用户当前积分
+    SELECT points INTO v_points FROM user WHERE id = p_user_id;
+    
+    -- 根据积分计算会员等级
+    IF v_points >= 5000 THEN
+        SET v_new_level = 2; -- 钻石会员
+    ELSEIF v_points >= 1000 THEN
+        SET v_new_level = 1; -- 黄金会员
+    ELSE
+        SET v_new_level = 0; -- 普通会员
+    END IF;
+    
+    -- 更新会员等级
+    UPDATE user SET member_level = v_new_level WHERE id = p_user_id;
+END $$
+DELIMITER ;
+
+-- 为现有用户更新会员等级
+CALL update_member_level(2);
+CALL update_member_level(3);
+
+
+-- ========================================
+-- 为用户表添加性别和生日字段
+-- ========================================
+
+USE `milk_tea`;
+
+-- 添加性别字段 (1-男, 2-女)
+ALTER TABLE `user` ADD COLUMN `gender` int(11) DEFAULT NULL COMMENT '性别：1-男，2-女' AFTER `phone`;
+
+-- 添加生日字段
+ALTER TABLE `user` ADD COLUMN `birthday` varchar(20) DEFAULT NULL COMMENT '生日' AFTER `gender`;
+
+-- 更新现有测试用户的性别和生日数据
+UPDATE `user` SET `gender` = 1, `birthday` = '1990-01-15' WHERE `username` = 'user1';
+UPDATE `user` SET `gender` = 2, `birthday` = '1992-05-20' WHERE `username` = 'user2';
+UPDATE `user` SET `gender` = 1, `birthday` = '1988-08-10' WHERE `username` = 'admin';
+
+-- 清理重复的营销活动数据
+USE `milk_tea`;
+
+-- 删除所有"新品抄茶"和"买一送一"活动
+DELETE FROM `marketing_activity` WHERE `name` IN ('新品抄茶', '新品炒茶', '买一送一');
+
+-- 查看剩余的活动
+SELECT * FROM `marketing_activity` WHERE `status` = 1 AND `deleted` = 0;
+
+-- 查询用户21的详细信息
+USE `milk_tea`;
+
+SELECT 
+    id,
+    username,
+    nickname,
+    member_level,
+    points,
+    balance,
+    create_time
+FROM user 
+WHERE id = 21;
+
+-- 如果要手动设置为钻石会员，需要给足够的积分
+-- 方案1：直接更新积分为5000以上
+UPDATE user 
+SET points = 5000 
+WHERE id = 21;
+
+-- 方案2：直接更新会员等级（但下次积分变化时会被重新计算）
+-- UPDATE user 
+-- SET member_level = 2 
+-- WHERE id = 21;
+
+-- 验证更新结果
+SELECT 
+    id,
+    username,
+    nickname,
+    member_level,
+    points,
+    balance
+FROM user 
+WHERE id = 21;
+
+
+
+-- 使用数据库
+USE `milk_tea`;
+
+-- 创建反馈表
+CREATE TABLE IF NOT EXISTS `feedback` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` BIGINT DEFAULT NULL COMMENT '用户ID',
+  `type` INT NOT NULL COMMENT '反馈类型：1-产品问题 2-服务问题 3-配送问题 4-支付问题 5-功能建议 6-其他问题',
+  `content` TEXT NOT NULL COMMENT '反馈内容',
+  `images` VARCHAR(500) DEFAULT NULL COMMENT '图片地址，多张图片用逗号分隔',
+  `contact_phone` VARCHAR(20) DEFAULT NULL COMMENT '联系电话',
+  `contact_email` VARCHAR(100) DEFAULT NULL COMMENT '联系邮箱',
+  `status` INT DEFAULT 0 COMMENT '处理状态：0-待处理 1-处理中 2-已回复',
+  `reply` TEXT DEFAULT NULL COMMENT '客服回复内容',
+  `reply_time` DATETIME DEFAULT NULL COMMENT '回复时间',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  KEY `idx_user_id` (`user_id`),
+  KEY `idx_status` (`status`),
+  KEY `idx_create_time` (`create_time`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户反馈表';
+
+
+-- 创建用户设置表
+USE `milk_tea`;
+
+CREATE TABLE IF NOT EXISTS `user_settings` (
+  `id` BIGINT NOT NULL AUTO_INCREMENT COMMENT '主键ID',
+  `user_id` BIGINT NOT NULL COMMENT '用户ID',
+  `order_notification` INT DEFAULT 1 COMMENT '订单通知：0-关闭 1-开启',
+  `activity_push` INT DEFAULT 1 COMMENT '活动推送：0-关闭 1-开启',
+  `coupon_reminder` INT DEFAULT 1 COMMENT '优惠提醒：0-关闭 1-开启',
+  `personalized_recommend` INT DEFAULT 1 COMMENT '个性化推荐：0-关闭 1-开启',
+  `create_time` DATETIME DEFAULT CURRENT_TIMESTAMP COMMENT '创建时间',
+  `update_time` DATETIME DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP COMMENT '更新时间',
+  PRIMARY KEY (`id`),
+  UNIQUE KEY `uk_user_id` (`user_id`),
+  KEY `idx_user_id` (`user_id`)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COMMENT='用户设置表';
+
+
+-- 邀请系统数据库设置
+USE milk_tea;
+
+-- 检查user表是否已有invite_code字段
+SELECT COUNT(*) as has_column 
+FROM information_schema.COLUMNS 
+WHERE TABLE_SCHEMA = 'milk_tea' 
+  AND TABLE_NAME = 'user' 
+  AND COLUMN_NAME = 'invite_code';
+
+
+USE milk_tea;
+
+ALTER TABLE `user` 
+ADD COLUMN `invite_code` VARCHAR(20) DEFAULT NULL COMMENT '邀请码' AFTER `member_no`,
+ADD COLUMN `inviter_id` BIGINT(20) DEFAULT NULL COMMENT '邀请人ID' AFTER `invite_code`,
+ADD COLUMN `invite_time` DATETIME DEFAULT NULL COMMENT '被邀请时间' AFTER `inviter_id`;
+
+ALTER TABLE `user` 
+ADD UNIQUE KEY `uk_invite_code` (`invite_code`),
+ADD KEY `idx_inviter_id` (`inviter_id`);
+
+-- 为现有用户生成邀请码（只更新没有邀请码的用户）
+UPDATE `user` 
+SET `invite_code` = CONCAT(
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1)
+)
+WHERE `invite_code` IS NULL OR `invite_code` = '';
+
+-- 查看结果
+SELECT id, username, nickname, invite_code, inviter_id FROM `user` LIMIT 10;
+
+
+-- 步骤1: 添加邀请相关字段
+USE milk_tea;
+
+-- 添加邀请字段
+ALTER TABLE `user` 
+ADD COLUMN `invite_code` VARCHAR(20) DEFAULT NULL COMMENT '邀请码' AFTER `member_no`,
+ADD COLUMN `inviter_id` BIGINT(20) DEFAULT NULL COMMENT '邀请人ID' AFTER `invite_code`,
+ADD COLUMN `invite_time` DATETIME DEFAULT NULL COMMENT '被邀请时间' AFTER `inviter_id`;
+
+-- 添加索引
+ALTER TABLE `user` 
+ADD UNIQUE KEY `uk_invite_code` (`invite_code`),
+ADD KEY `idx_inviter_id` (`inviter_id`);
+
+-- 查看表结构
+DESC `user`;
+
+
+-- 步骤2: 为现有用户生成邀请码
+USE milk_tea;
+
+-- 为所有用户生成邀请码
+UPDATE `user` 
+SET `invite_code` = CONCAT(
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1),
+    SUBSTRING('ABCDEFGHJKLMNPQRSTUVWXYZ23456789', FLOOR(1 + RAND() * 32), 1)
+)
+WHERE `invite_code` IS NULL;
+
+-- 查看结果
+SELECT id, username, nickname, invite_code, inviter_id FROM `user` LIMIT 10;

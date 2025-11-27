@@ -30,10 +30,10 @@ public class CouponController {
      * 获取可用优惠券列表
      */
     @GetMapping("/available")
-    public Result<List<Coupon>> getAvailableCoupons(@RequestParam(required = false) Long userId) {
+    public Result<?> getAvailableCoupons(@RequestParam(required = false) Long userId) {
         // 如果传了userId，返回包含领取状态的列表
         if (userId != null) {
-            return (Result) couponService.getAvailableCouponsWithStatus(userId);
+            return couponService.getAvailableCouponsWithStatus(userId);
         }
         return couponService.getAvailableCoupons();
     }

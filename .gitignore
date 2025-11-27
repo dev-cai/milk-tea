@@ -8,7 +8,10 @@ Thumbs.db
 *.iml
 .kiro/
 .hbuilderx/
-.uploads/
+uploads/
+database/cleanup/
+database/backups/
+
 
 ### Java / Maven / Gradle
 target/

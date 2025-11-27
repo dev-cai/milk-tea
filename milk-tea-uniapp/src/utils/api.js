@@ -398,6 +398,20 @@ const api = {
 			url: `/order/${id}/evaluate`,
 			method: 'POST',
 			data
+		}),
+		
+		// 提交投诉
+		submitComplaint: (data) => request({
+			url: '/order/complaint',
+			method: 'POST',
+			data
+		}),
+		
+		// 获取我的投诉列表
+		getMyComplaints: (userId, params = {}) => request({
+			url: `/order/complaints?userId=${userId}`,
+			method: 'GET',
+			data: params
 		})
 	},
 	

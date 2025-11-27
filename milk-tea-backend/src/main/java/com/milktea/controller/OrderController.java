@@ -89,4 +89,23 @@ public class OrderController {
         Long userId = Long.valueOf(request.get("userId").toString());
         return orderService.evaluateOrder(id, userId, request);
     }
+    
+    /**
+     * 提交投诉
+     */
+    @PostMapping("/complaint")
+    public Result<String> submitComplaint(@RequestBody Map<String, Object> request) {
+        return orderService.submitComplaint(request);
+    }
+    
+    /**
+     * 获取用户投诉列表
+     */
+    @GetMapping("/complaints")
+    public Result<PageResult<Map<String, Object>>> getUserComplaints(
+            @RequestParam Long userId,
+            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "10") Integer size) {
+        return orderService.getUserComplaints(userId, page, size);
+    }
 }

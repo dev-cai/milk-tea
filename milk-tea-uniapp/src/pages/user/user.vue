@@ -127,6 +127,13 @@
 					<text class="menu-text">邀请好友</text>
 					<text class="menu-arrow">›</text>
 				</view>
+				<view class="menu-item" @click="goToComplaintList">
+					<view class="menu-icon-box">
+						<text class="menu-icon">📢</text>
+					</view>
+					<text class="menu-text">我的投诉</text>
+					<text class="menu-arrow">›</text>
+				</view>
 				<view class="menu-item" @click="goToFeedback">
 					<view class="menu-icon-box">
 						<text class="menu-icon">💬</text>
@@ -488,6 +495,14 @@ export default {
 			if (!this.checkLogin()) return
 			uni.navigateTo({
 				url: '/pages/profile/profile'
+			})
+		},
+
+		// 跳转投诉列表
+		goToComplaintList() {
+			if (!this.checkLogin()) return
+			uni.navigateTo({
+				url: '/pages/complaint/complaint-list'
 			})
 		},
 
