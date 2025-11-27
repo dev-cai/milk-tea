@@ -1,6 +1,6 @@
 // API配置和封装
 const config = {
-	baseUrl: 'http://localhost:8080/api',
+	baseUrl: 'http://47.239.246.117:8080/api',
 	timeout: 10000,
 	header: {
 		'Content-Type': 'application/json'

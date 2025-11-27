@@ -1,30 +1,30 @@
 {
-    "name": "奶茶小程序",
-    "appid": "__UNI__MILKTEA",
-    "description": "现代化奶茶订购小程序",
-    "versionName": "1.0.0",
-    "versionCode": "100",
-    "transformPx": false,
-    "app-plus": {
-        "usingComponents": true,
-        "nvueStyleCompiler": "uni-app",
-        "compilerVersion": 3,
-        "splashscreen": {
-            "alwaysShowBeforeRender": true,
-            "waiting": true,
-            "autoclose": true,
-            "delay": 0
+    "name" : "奶茶小程序",
+    "appid" : "__UNI__A88C5F0",
+    "description" : "现代化奶茶订购小程序",
+    "versionName" : "1.0.0",
+    "versionCode" : "100",
+    "transformPx" : false,
+    "app-plus" : {
+        "usingComponents" : true,
+        "nvueStyleCompiler" : "uni-app",
+        "compilerVersion" : 3,
+        "splashscreen" : {
+            "alwaysShowBeforeRender" : true,
+            "waiting" : true,
+            "autoclose" : true,
+            "delay" : 0
         },
-        "modules": {
-            "Payment": {},
-            "OAuth": {},
-            "Share": {},
-            "Maps": {},
-            "Geolocation": {}
+        "modules" : {
+            "Payment" : {},
+            "OAuth" : {},
+            "Share" : {},
+            "Maps" : {},
+            "Geolocation" : {}
         },
-        "distribute": {
-            "android": {
-                "permissions": [
+        "distribute" : {
+            "android" : {
+                "permissions" : [
                     "<uses-permission android:name=\"android.permission.CHANGE_NETWORK_STATE\" />",
                     "<uses-permission android:name=\"android.permission.MOUNT_UNMOUNT_FILESYSTEMS\" />",
                     "<uses-permission android:name=\"android.permission.VIBRATE\" />",
@@ -43,73 +43,74 @@
                     "<uses-permission android:name=\"android.permission.ACCESS_COARSE_LOCATION\" />"
                 ]
             },
-            "ios": {},
-            "sdkConfigs": {}
+            "ios" : {
+                "dSYMs" : false
+            },
+            "sdkConfigs" : {}
         }
     },
-    "quickapp": {},
-    "mp-weixin": {
-        "appid": "",
-        "setting": {
-            "urlCheck": false,
-            "es6": true,
-            "enhance": true,
-            "postcss": true,
-            "preloadBackgroundData": false,
-            "minified": true,
-            "newFeature": false,
-            "coverView": true,
-            "nodeModules": false,
-            "autoAudits": false,
-            "showShadowRootInWxmlPanel": true,
-            "scopeDataCheck": false,
-            "uglifyFileName": false,
-            "checkInvalidKey": true,
-            "checkSiteMap": true,
-            "uploadWithSourceMap": true,
-            "compileHotReLoad": false,
-            "lazyloadPlaceholderEnable": false,
-            "useMultiFrameRuntime": true,
-            "useApiHook": true,
-            "useApiHostProcess": true,
-            "babelSetting": {
-                "ignore": [],
-                "disablePlugins": [],
-                "outputPath": ""
+    "quickapp" : {},
+    "mp-weixin" : {
+        "appid" : "",
+        "setting" : {
+            "urlCheck" : false,
+            "es6" : true,
+            "enhance" : true,
+            "postcss" : true,
+            "preloadBackgroundData" : false,
+            "minified" : true,
+            "newFeature" : false,
+            "coverView" : true,
+            "nodeModules" : false,
+            "autoAudits" : false,
+            "showShadowRootInWxmlPanel" : true,
+            "scopeDataCheck" : false,
+            "uglifyFileName" : false,
+            "checkInvalidKey" : true,
+            "checkSiteMap" : true,
+            "uploadWithSourceMap" : true,
+            "compileHotReLoad" : false,
+            "lazyloadPlaceholderEnable" : false,
+            "useMultiFrameRuntime" : true,
+            "useApiHook" : true,
+            "useApiHostProcess" : true,
+            "babelSetting" : {
+                "ignore" : [],
+                "disablePlugins" : [],
+                "outputPath" : ""
             },
-            "enableEngineNative": false,
-            "useIsolateContext": true,
-            "userConfirmedBundleSwitch": false,
-            "packNpmManually": false,
-            "packNpmRelationList": [],
-            "minifyWXSS": true,
-            "disableUseStrict": false,
-            "minifyWXML": true,
-            "showES6CompileOption": false,
-            "useCompilerPlugins": false
+            "enableEngineNative" : false,
+            "useIsolateContext" : true,
+            "userConfirmedBundleSwitch" : false,
+            "packNpmManually" : false,
+            "packNpmRelationList" : [],
+            "minifyWXSS" : true,
+            "disableUseStrict" : false,
+            "minifyWXML" : true,
+            "showES6CompileOption" : false,
+            "useCompilerPlugins" : false
         },
-        "usingComponents": true,
-        "permission": {
-            "scope.userLocation": {
-                "desc": "你的位置信息将用于获取附近门店和配送地址"
+        "usingComponents" : true,
+        "permission" : {
+            "scope.userLocation" : {
+                "desc" : "你的位置信息将用于获取附近门店和配送地址"
             }
         },
-        "requiredPrivateInfos": [
-            "getLocation",
-            "chooseLocation"
-        ]
+        "requiredPrivateInfos" : [ "getLocation", "chooseLocation" ]
     },
-    "mp-alipay": {
-        "usingComponents": true
+    "mp-alipay" : {
+        "usingComponents" : true
     },
-    "mp-baidu": {
-        "usingComponents": true
+    "mp-baidu" : {
+        "usingComponents" : true
     },
-    "mp-toutiao": {
-        "usingComponents": true
+    "mp-toutiao" : {
+        "usingComponents" : true
     },
-    "uniStatistics": {
-        "enable": false
+    "uniStatistics" : {
+        "enable" : false
     },
-    "vueVersion": "3"
+    "vueVersion" : "3",
+    "fallbackLocale" : "zh-Hans",
+    "locale" : "zh-Hans"
 }
