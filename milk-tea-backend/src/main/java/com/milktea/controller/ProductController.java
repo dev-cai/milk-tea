@@ -5,6 +5,7 @@ import com.milktea.common.Result;
 import com.milktea.entity.Category;
 import com.milktea.entity.Product;
 import com.milktea.service.ProductService;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -78,7 +79,12 @@ public class ProductController {
     @GetMapping("/personalized")
     public Result<List<Product>> getPersonalizedProducts(
             @RequestParam Long userId,
-            @RequestParam(defaultValue = "10") Integer limit) {
+            @RequestParam(defaultValue = "10") Integer limit,
+            HttpServletRequest request) {
+        Object authenticatedUserId = request.getAttribute("authenticatedUserId");
+        if (authenticatedUserId == null || !Long.valueOf(authenticatedUserId.toString()).equals(userId)) {
+            throw new org.springframework.security.access.AccessDeniedException("无权查看其他用户的推荐");
+        }
         log.info("获取个性化推荐商品，userId: {}, limit: {}", userId, limit);
         return productService.getPersonalizedProducts(userId, limit);
     }

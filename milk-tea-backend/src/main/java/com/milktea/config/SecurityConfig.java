@@ -7,8 +7,10 @@ import org.springframework.security.config.annotation.web.builders.HttpSecurity;
 import org.springframework.security.config.annotation.web.configuration.EnableWebSecurity;
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.http.HttpMethod;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.web.util.matcher.RegexRequestMatcher;
 
 /**
  * Spring Security 配置类 
@@ -34,12 +36,12 @@ public class SecurityConfig {
             // 配置访问权限
             .authorizeHttpRequests(auth -> auth
                 // 公开接口
-                .requestMatchers("/auth/login", "/auth/register", "/test/**", "/database/**").permitAll()
-                .requestMatchers("/product/page", "/product/category").permitAll()
-                // 暂时允许所有admin接口，用于调试
-                .requestMatchers("/admin/**").permitAll()
-                // 其他接口需要认证
-                .anyRequest().permitAll()
+                .requestMatchers("/auth/**").permitAll()
+                .requestMatchers("/product/page", "/product/categories", "/product/recommend", "/product/hot").permitAll()
+                .requestMatchers(new RegexRequestMatcher("^/product/[0-9]+$", "GET")).permitAll()
+                .requestMatchers(HttpMethod.GET, "/banner/**", "/activity/**", "/marketing/banners", "/marketing/activities", "/marketing/activity/*").permitAll()
+                .requestMatchers("/admin/**").hasRole("ADMIN")
+                .anyRequest().authenticated()
             )
             // 添加JWT过滤器
             .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);

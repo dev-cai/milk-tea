@@ -39,7 +39,7 @@ public class ProductService {
      * 分页查询商品（用户端）
      */
     public Result<PageResult<Product>> getProductPage(Integer page, Integer size, Long categoryId, String keyword, String sortType, String sortOrder) {
-        Page<Product> pageObj = new Page<>(page, size);
+        Page<Product> pageObj = new Page<>(normalizePage(page), normalizePageSize(size));
         
         LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Product::getStatus, 1) // 只查询上架商品
@@ -50,9 +50,9 @@ public class ProductService {
         }
         
         if (StringUtils.hasText(keyword)) {
-            queryWrapper.like(Product::getName, keyword)
+            queryWrapper.and(wrapper -> wrapper.like(Product::getName, keyword)
                        .or()
-                       .like(Product::getDescription, keyword);
+                       .like(Product::getDescription, keyword));
         }
         
         // 处理排序
@@ -108,7 +108,7 @@ public class ProductService {
      * 分页查询商品（管理端）
      */
     public Result<PageResult<Product>> getAdminProductPage(Integer page, Integer size, Long categoryId, String keyword, Integer status, String stockStatus) {
-        Page<Product> pageObj = new Page<>(page, size);
+        Page<Product> pageObj = new Page<>(normalizePage(page), normalizePageSize(size));
         
         LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(Product::getDeleted, 0); // 只查询未删除的商品
@@ -141,9 +141,9 @@ public class ProductService {
         }
         
         if (StringUtils.hasText(keyword)) {
-            queryWrapper.like(Product::getName, keyword)
+            queryWrapper.and(wrapper -> wrapper.like(Product::getName, keyword)
                        .or()
-                       .like(Product::getDescription, keyword);
+                       .like(Product::getDescription, keyword));
         }
         
         queryWrapper.orderByDesc(Product::getSort)
@@ -216,7 +216,7 @@ public class ProductService {
                    .eq(Product::getIsRecommend, 1)
                    .orderByDesc(Product::getSort)
                    .orderByDesc(Product::getSales)
-                   .last("LIMIT " + limit);
+                   .last("LIMIT " + normalizeLimit(limit));
         
         List<Product> products = productMapper.selectList(queryWrapper);
         return Result.success("获取成功", products);
@@ -230,7 +230,7 @@ public class ProductService {
         queryWrapper.eq(Product::getStatus, 1)
                    .orderByDesc(Product::getSales)
                    .orderByDesc(Product::getSort)
-                   .last("LIMIT " + limit);
+                   .last("LIMIT " + normalizeLimit(limit));
         
         List<Product> products = productMapper.selectList(queryWrapper);
         return Result.success("获取成功", products);
@@ -242,13 +242,14 @@ public class ProductService {
      */
     public Result<List<Product>> getPersonalizedProducts(Long userId, Integer limit) {
         try {
+            int safeLimit = normalizeLimit(limit);
             // 1. 查询用户购买过的商品ID列表
             List<Long> purchasedProductIds = orderItemMapper.selectPurchasedProductIdsByUserId(userId);
             
             if (purchasedProductIds == null || purchasedProductIds.isEmpty()) {
                 // 没有购买记录，返回热销商品
                 log.info("用户{}没有购买记录，返回热销商品", userId);
-                return getHotProducts(limit);
+                return getHotProducts(safeLimit);
             }
             
             // 2. 查询用户购买过的商品详情，获取分类信息
@@ -265,6 +266,10 @@ public class ProductService {
                 .map(Map.Entry::getKey)
                 .limit(3) // 取前3个最喜欢的分类
                 .collect(Collectors.toList());
+
+            if (favoriteCategories.isEmpty()) {
+                return getHotProducts(safeLimit);
+            }
             
             // 5. 从这些分类中推荐商品（排除已购买的）
             LambdaQueryWrapper<Product> queryWrapper = new LambdaQueryWrapper<>();
@@ -273,13 +278,13 @@ public class ProductService {
                        .notIn(Product::getId, purchasedProductIds) // 排除已购买的商品
                        .orderByDesc(Product::getSales)
                        .orderByDesc(Product::getSort)
-                       .last("LIMIT " + limit);
+                       .last("LIMIT " + safeLimit);
             
             List<Product> recommendedProducts = productMapper.selectList(queryWrapper);
             
             // 6. 如果推荐的商品不够，补充热销商品
-            if (recommendedProducts.size() < limit) {
-                int remaining = limit - recommendedProducts.size();
+            if (recommendedProducts.size() < safeLimit) {
+                int remaining = safeLimit - recommendedProducts.size();
                 LambdaQueryWrapper<Product> hotWrapper = new LambdaQueryWrapper<>();
                 hotWrapper.eq(Product::getStatus, 1)
                          .notIn(Product::getId, purchasedProductIds)
@@ -296,7 +301,7 @@ public class ProductService {
                 for (Product product : hotProducts) {
                     if (!existingIds.contains(product.getId())) {
                         recommendedProducts.add(product);
-                        if (recommendedProducts.size() >= limit) {
+                        if (recommendedProducts.size() >= safeLimit) {
                             break;
                         }
                     }
@@ -309,8 +314,20 @@ public class ProductService {
         } catch (Exception e) {
             log.error("获取个性化推荐失败，返回热销商品", e);
             // 出错时返回热销商品
-            return getHotProducts(limit);
+            return getHotProducts(normalizeLimit(limit));
         }
+    }
+
+    private int normalizeLimit(Integer limit) {
+        return limit == null ? 10 : Math.max(1, Math.min(limit, 50));
+    }
+
+    private long normalizePage(Integer page) {
+        return page == null ? 1L : Math.max(1L, page.longValue());
+    }
+
+    private long normalizePageSize(Integer size) {
+        return size == null ? 10L : Math.max(1L, Math.min(size.longValue(), 100L));
     }
     
     /**

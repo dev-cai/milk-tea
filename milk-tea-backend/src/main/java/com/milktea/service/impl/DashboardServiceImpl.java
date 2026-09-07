@@ -188,6 +188,7 @@ public class DashboardServiceImpl implements DashboardService {
     @Override
     public Map<String, Object> getProductRanking(Integer limit) {
         Map<String, Object> rankingData = new HashMap<>();
+        int safeLimit = limit == null ? 10 : Math.max(1, Math.min(limit, 50));
         
         try {
             // 查询销量排行前N的商品
@@ -195,7 +196,7 @@ public class DashboardServiceImpl implements DashboardService {
             productQuery.eq("status", 1)
                        .eq("deleted", 0)
                        .orderByDesc("sales")
-                       .last("LIMIT " + limit);
+                       .last("LIMIT " + safeLimit);
             
             List<Product> products = productMapper.selectList(productQuery);
             
@@ -228,7 +229,7 @@ public class DashboardServiceImpl implements DashboardService {
                 new BigDecimal("602.00")
             );
             
-            int actualLimit = Math.min(limit, productNames.size());
+            int actualLimit = Math.min(safeLimit, productNames.size());
             rankingData.put("names", productNames.subList(0, actualLimit));
             rankingData.put("salesCount", salesCount.subList(0, actualLimit));
             rankingData.put("salesAmount", salesAmount.subList(0, actualLimit));

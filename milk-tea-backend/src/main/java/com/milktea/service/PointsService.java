@@ -110,8 +110,10 @@ public class PointsService {
                    .orderByDesc(PointsHistory::getCreateTime);
         
         // 简单分页实现
-        int offset = (page - 1) * size;
-        queryWrapper.last("LIMIT " + offset + ", " + size);
+        int safePage = page == null ? 1 : Math.max(1, page);
+        int safeSize = size == null ? 10 : Math.max(1, Math.min(size, 100));
+        int offset = (safePage - 1) * safeSize;
+        queryWrapper.last("LIMIT " + offset + ", " + safeSize);
         
         List<PointsHistory> historyList = pointsHistoryMapper.selectList(queryWrapper);
         
@@ -120,7 +122,7 @@ public class PointsService {
         countWrapper.eq(PointsHistory::getUserId, userId);
         Long total = pointsHistoryMapper.selectCount(countWrapper);
         
-        return new com.milktea.common.PageResult<>(historyList, total, (long) page, (long) size);
+        return new com.milktea.common.PageResult<>(historyList, total, (long) safePage, (long) safeSize);
     }
     
     /**

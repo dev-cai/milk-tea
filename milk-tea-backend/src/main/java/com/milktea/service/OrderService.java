@@ -13,6 +13,7 @@ import com.milktea.exception.BusinessException;
 import com.milktea.mapper.OrderItemMapper;
 import com.milktea.mapper.OrderMapper;
 import com.milktea.mapper.ProductMapper;
+import com.milktea.mapper.ReviewMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -38,17 +39,20 @@ public class OrderService {
     private final com.milktea.mapper.UserMapper userMapper;
     private final com.milktea.mapper.ComplaintMapper complaintMapper;
     private final com.milktea.mapper.RefundRequestMapper refundRequestMapper;
+    private final ReviewMapper reviewMapper;
     
     public OrderService(OrderMapper orderMapper, OrderItemMapper orderItemMapper, ProductMapper productMapper, 
                        com.milktea.mapper.UserMapper userMapper,
                        com.milktea.mapper.ComplaintMapper complaintMapper,
-                       com.milktea.mapper.RefundRequestMapper refundRequestMapper) {
+                       com.milktea.mapper.RefundRequestMapper refundRequestMapper,
+                       ReviewMapper reviewMapper) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.productMapper = productMapper;
         this.userMapper = userMapper;
         this.complaintMapper = complaintMapper;
         this.refundRequestMapper = refundRequestMapper;
+        this.reviewMapper = reviewMapper;
     }
     
     /**
@@ -139,9 +143,11 @@ public class OrderService {
                 totalAmount = totalAmount.add(itemAmount);
                 log.info("商品小计: {}, 累计金额: {}", itemAmount, totalAmount);
                 
-                // 减库存
-                product.setStock(product.getStock() - itemRequest.getQuantity());
-                productMapper.updateById(product);
+                // 原子扣减库存，避免并发下单导致超卖
+                int updated = productMapper.decrementStock(product.getId(), itemRequest.getQuantity());
+                if (updated != 1) {
+                    throw new BusinessException("商品库存不足");
+                }
                 log.info("库存更新成功");
             }
         
@@ -222,6 +228,17 @@ public class OrderService {
         result.put("items", orderItems);
         
         return Result.success("获取成功", result);
+    }
+
+    public Result<Map<String, Object>> getOrderDetail(Long orderId, Long userId) {
+        Order order = orderMapper.selectById(orderId);
+        if (order == null) {
+            throw new BusinessException("订单不存在");
+        }
+        if (!order.getUserId().equals(userId)) {
+            throw new BusinessException("无权查看此订单");
+        }
+        return getOrderDetail(orderId);
     }
     
     /**
@@ -348,14 +365,49 @@ public class OrderService {
             throw new BusinessException("只有已完成的订单才能评价");
         }
         
-        // 这里可以将评价信息保存到评价表
-        // 简化实现：只记录日志
-        Integer rating = (Integer) evaluateData.get("rating");
-        String comment = (String) evaluateData.get("comment");
-        
-        log.info("订单评价: orderId={}, userId={}, rating={}, comment={}", 
-                orderId, userId, rating, comment);
-        
+        Integer rating = evaluateData.get("rating") == null ? null : Integer.valueOf(evaluateData.get("rating").toString());
+        if (rating == null || rating < 1 || rating > 5) {
+            throw new BusinessException("评分必须为1-5分");
+        }
+        String comment = evaluateData.get("comment") == null
+                ? (evaluateData.get("content") == null ? "" : evaluateData.get("content").toString())
+                : evaluateData.get("comment").toString();
+        if (comment.length() > 500) {
+            throw new BusinessException("评价内容不能超过500字");
+        }
+
+        Long productId = evaluateData.get("productId") == null ? null
+                : Long.valueOf(evaluateData.get("productId").toString());
+        if (productId == null) {
+            OrderItem firstItem = orderItemMapper.selectOne(new LambdaQueryWrapper<OrderItem>()
+                    .eq(OrderItem::getOrderId, orderId).last("LIMIT 1"));
+            if (firstItem == null) {
+                throw new BusinessException("订单没有可评价的商品");
+            }
+            productId = firstItem.getProductId();
+        }
+        Long existing = reviewMapper.selectCount(new LambdaQueryWrapper<com.milktea.entity.Review>()
+                .eq(com.milktea.entity.Review::getOrderId, orderId)
+                .eq(com.milktea.entity.Review::getUserId, userId)
+                .eq(com.milktea.entity.Review::getProductId, productId));
+        if (existing > 0) {
+            throw new BusinessException("该商品已经评价过了");
+        }
+
+        com.milktea.entity.Review review = new com.milktea.entity.Review();
+        review.setOrderId(orderId);
+        review.setUserId(userId);
+        review.setProductId(productId);
+        review.setRating(rating);
+        review.setContent(comment);
+        review.setImages(evaluateData.get("images") == null ? null : evaluateData.get("images").toString());
+        review.setIsAnonymous(evaluateData.get("isAnonymous") == null ? 0
+                : Integer.valueOf(evaluateData.get("isAnonymous").toString()));
+        reviewMapper.insert(review);
+
+        log.info("订单评价已保存: orderId={}, userId={}, productId={}, rating={}",
+                orderId, userId, productId, rating);
+
         return Result.success("评价成功");
     }
     

@@ -4,6 +4,7 @@ import com.milktea.common.Result;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.security.access.AccessDeniedException;
 
 /**
  * 全局异常处理器
@@ -29,6 +30,12 @@ public class GlobalExceptionHandler {
     public Result<String> handleIllegalArgumentException(IllegalArgumentException e) {
         log.error("参数异常：{}", e.getMessage());
         return Result.error(400, e.getMessage());
+    }
+
+    @ExceptionHandler(AccessDeniedException.class)
+    public Result<String> handleAccessDeniedException(AccessDeniedException e) {
+        log.warn("访问被拒绝：{}", e.getMessage());
+        return Result.error(403, "无权访问该资源");
     }
     
     /**

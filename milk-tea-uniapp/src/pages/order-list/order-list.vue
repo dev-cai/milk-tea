@@ -263,11 +263,9 @@ export default {
 							})
 						} catch (error) {
 							console.error('取消订单失败:', error)
-							// 模拟取消成功
-							order.status = 5
 							uni.showToast({
-								title: '订单已取消',
-								icon: 'success'
+								title: error.message || '取消失败',
+								icon: 'none'
 							})
 						}
 					}

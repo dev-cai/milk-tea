@@ -41,6 +41,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             try {
                 String username = jwtUtils.getUsernameFromToken(token);
                 String userType = jwtUtils.getUserTypeFromToken(token);
+                Long userId = jwtUtils.getUserIdFromToken(token);
+                request.setAttribute("authenticatedUserId", userId);
                 
                 // 创建认证对象
                 String role = "1".equals(userType) ? "ROLE_ADMIN" : "ROLE_USER";

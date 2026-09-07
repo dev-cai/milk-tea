@@ -146,6 +146,9 @@ public class UserService {
         if (existAddress == null) {
             throw new BusinessException("地址不存在");
         }
+        if (!existAddress.getUserId().equals(address.getUserId())) {
+            throw new BusinessException("无权操作此地址");
+        }
         
         // 如果设置为默认地址，先取消其他默认地址
         if (address.getIsDefault() == 1) {
@@ -167,6 +170,18 @@ public class UserService {
      * 删除用户地址
      */
     public Result<String> deleteUserAddress(Long addressId) {
+        userAddressMapper.deleteById(addressId);
+        return Result.success("删除成功");
+    }
+
+    public Result<String> deleteUserAddress(Long addressId, Long userId) {
+        UserAddress address = userAddressMapper.selectById(addressId);
+        if (address == null) {
+            throw new BusinessException("地址不存在");
+        }
+        if (!address.getUserId().equals(userId)) {
+            throw new BusinessException("无权操作此地址");
+        }
         userAddressMapper.deleteById(addressId);
         return Result.success("删除成功");
     }
