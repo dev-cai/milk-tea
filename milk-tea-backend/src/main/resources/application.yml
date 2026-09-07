@@ -13,8 +13,8 @@ spring:
     type: com.zaxxer.hikari.HikariDataSource
     driver-class-name: com.mysql.cj.jdbc.Driver
     url: jdbc:mysql://localhost:3306/milk_tea?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai&allowPublicKeyRetrieval=true
-    username: root
-    password: 123456
+    username: ${DB_USERNAME:root}
+    password: ${DB_PASSWORD:}
     hikari:
       minimum-idle: 5
       maximum-pool-size: 20
@@ -28,9 +28,9 @@ spring:
   # Redis配置
   data:
     redis:
-      host: localhost
-      port: 6379
-      password:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       database: 0
       timeout: 3000
       lettuce:
@@ -63,13 +63,13 @@ mybatis-plus:
 
 # JWT配置
 jwt:
-  secret: milkTeaSecretKey2024ForJavaWebProject
+  secret: ${JWT_SECRET:dev-only-change-this-secret-before-deploy}
   expiration: 604800
 
 # 文件上传配置
 file:
   upload:
-    path: D:/Project/Java_Project/javaweb/milk-tea-backend/uploads/
+    path: ${FILE_UPLOAD_PATH:./uploads/}
     url-prefix: /uploads/
 
 

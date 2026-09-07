@@ -1,167 +1,125 @@
-# 奶茶小程序系统设计文档
+# MilkTea Commerce Platform｜奶茶点单与门店运营平台
 
-## 1. 系统概述
+面向茶饮门店的全链路数字化运营平台。本人主要负责 Spring Boot 3 后端开发，围绕用户端和运营后台提供 REST API，覆盖订单履约、库存与会员营销、售后反馈和经营分析等核心业务域，实践 JWT 鉴权、事务化库存扣减、规则推荐和统一 API 契约。
 
-### 1.1 项目背景
-本项目是一个完整的奶茶小程序系统，包含用户端小程序和商家管理后台，采用前后端分离架构设计。
+## 后端开发重点
 
-### 1.2 系统目标
-- 为用户提供便捷的奶茶订购体验
-- 为商家提供完善的订单和商品管理功能
-- 支持会员体系和营销活动管理
+- 为用户端小程序和商家后台提供商品、订单、会员、营销和数据分析 API，维护统一响应模型与分页协议。
+- 采用分层架构和 MyBatis-Plus 数据访问，完成 JWT 认证、角色访问控制、全局异常处理和参数边界校验。
+- 订单流程包含金额计算、库存校验、事务控制、原子扣库存、取消恢复库存、退款申请和订单评价落库。
+- 推荐模块基于用户历史购买分类进行规则推荐，并以销量商品处理冷启动和结果补齐。
+- 与 Vue 3 管理后台、uni-app 用户端进行接口联调，完成从商品浏览到订单履约、售后反馈和运营分析的业务闭环。
 
-### 1.3 技术架构
-- 后端：Spring Boot 3 + MyBatis Plus + JWT + Redis
-- 前端(小程序)：uni-app+vue3
-- 前端(管理后台)：Vue 3 + Element Plus + Vite
-- 数据库：MySQL 8.0
+## 技术栈
 
-## 2. 系统架构设计
+| 模块 | 技术 |
+| --- | --- |
+| 用户端 | uni-app、Vue 3、uView Plus、SCSS、Vite |
+| 管理端 | Vue 3、Vue Router、Vuex、Element Plus、ECharts、Axios、Vite |
+| 后端 | Java 17、Spring Boot 3.1、Spring Security、JWT、MyBatis-Plus、HikariCP、Hutool |
+| 数据库 | MySQL 8.0 |
+| 可选基础设施 | Redis 6+（配置预留） |
 
-### 2.1 整体架构
-```
-┌─────────────────┐    ┌─────────────────┐
-│   小程序前端     │    │   管理后台       │
-└─────────────────┘    └─────────────────┘
-         │                       │
-         └───────────┬───────────┘
-                     │
-         ┌─────────────────┐
-         │   后端API服务    │
-         └─────────────────┘
-                     │
-         ┌─────────────────┐
-         │   MySQL数据库    │
-         └─────────────────┘
+## 系统结构
+
+```text
+milk-tea/
+├── milk-tea-backend/     # Spring Boot 后端服务，默认端口 8080，接口前缀 /api
+├── milk-tea-admin/       # Vue 3 + Element Plus 商家管理后台
+├── milk-tea-uniapp/      # uni-app 用户端，可构建微信小程序、H5 和 App
+├── database/              # MySQL 初始化脚本和数据说明
+├── docs/                  # API、系统设计和 Android 打包文档
+└── milk-tea.apk           # Android 测试安装包
 ```
 
-### 2.2 技术选型说明
-- **Spring Boot**: 简化配置，快速开发
-- **MyBatis Plus**: 提高开发效率，减少SQL编写
-- **JWT**: 无状态认证，支持分布式
-- **Redis**: 缓存热点数据，提升性能
-- **Vue 3**: 现代化前端框架
-- **Element Plus**: 丰富的UI组件库
+## 本地运行
 
+### 1. 准备环境
 
+- JDK 17+
+- Maven 3.6+
+- Node.js 16+
+- MySQL 8.0+
+- Redis 6+（当前配置为可选）
 
-## 3. 部署流程
+### 2. 初始化数据库
 
-### 3.1 环境要求
-
-#### 开发环境
-- **JDK**: 17+
-- **Node.js**: 16+
-- **MySQL**: 8.0+
-- **Redis**: 6.0+ (可选)
-- **Maven**: 3.6+
-- **IDE**: IntelliJ IDEA / VS Code
-
-
-### 3.2 本地开发部署
-
-#### 3.2.1 克隆项目
 ```bash
-git clone https://github.com/pahhcn/milk-tea.git
-cd milk-tea-system
+mysql -u root -p -e "CREATE DATABASE milk_tea CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
+mysql -u root -p milk_tea < database/init.sql
 ```
 
-#### 3.2.2 数据库初始化
+### 3. 配置后端
 
-1. **创建数据库**
-```sql
-CREATE DATABASE milk_tea CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;
-```
+项目通过环境变量读取敏感配置，至少设置数据库密码和 JWT 密钥：
 
-2. **导入数据库脚本**（按顺序执行）
 ```bash
-# 导入数据库结构和基础数据
-mysql -u root -p milk_tea < database/milk_tea.sql
-
+export DB_USERNAME=root
+export DB_PASSWORD=your_mysql_password
+export JWT_SECRET=replace-with-a-long-random-secret
 ```
 
-#### 3.2.3 后端部署
-
-1. **配置数据库连接**
-
-编辑 `milk-tea-backend/src/main/resources/application.yml`：
-
-```yaml
-spring:
-  datasource:
-    url: jdbc:mysql://localhost:3306/milk_tea?useUnicode=true&characterEncoding=utf-8&useSSL=false&serverTimezone=Asia/Shanghai
-    username: root
-    password: your_password  # 修改为你的数据库密码
-```
-
-
-2. **启动后端服务**
+如需使用 Redis，可设置 `REDIS_HOST`、`REDIS_PORT` 和 `REDIS_PASSWORD`，再启动后端：
 
 ```bash
 cd milk-tea-backend
-
-# 使用Maven启动
-mvn clean spring-boot:run
-
-# 或者打包后运行
-mvn clean package
-java -jar target/milk-tea-backend-1.0.0.jar
+mvn spring-boot:run
 ```
 
-后端服务将在 `http://localhost:8080/api` 启动
+服务地址：`http://localhost:8080/api`
 
-#### 3.2.4 管理后台部署
+### 4. 启动管理后台
 
-1. **安装依赖**
 ```bash
 cd milk-tea-admin
 npm install
-npm install -D sass
-```
-
-2. **配置API地址**（如果需要）
-
-编辑 `milk-tea-admin/src/utils/request.js`：
-```javascript
-const request = axios.create({
-  baseURL: '/api',  // 开发环境使用代理
-  timeout: 10000
-})
-```
-
-3. **启动开发服务器**
-```bash
 npm run dev
 ```
 
-管理后台将在 `http://localhost:5173` 启动
+默认访问地址：`http://localhost:5173`
 
-默认管理员账号：
-- 用户名：`admin`
-- 密码：`123456`
+### 5. 启动用户端
 
-#### 3.2.5 小程序端部署
-
-1. **安装依赖**
 ```bash
 cd milk-tea-uniapp
 npm install
+npm run dev:h5
 ```
 
-2. **配置API地址**
+微信小程序构建：
 
-编辑 `milk-tea-uniapp/src/config/index.js`（如果存在）或相关配置文件
-
-3. **启动开发服务器**
 ```bash
-npm run dev:mp-weixin  # 微信小程序
-npm run dev:h5         # H5
+npm run build:mp-weixin
 ```
 
-4. **使用微信开发者工具**
-- 打开微信开发者工具
-- 导入项目：选择 `milk-tea-uniapp/dist/dev/mp-weixin` 目录
-- 开始调试
+更多 App 打包说明见 [`docs/Android打包指南.md`](docs/Android打包指南.md)。
 
+## 接口与文档
 
+- [API 接口文档](docs/API文档.md)
+- [系统设计文档](docs/系统设计文档.md)
+- [后端说明](milk-tea-backend/README.md)
+- [管理后台说明](milk-tea-admin/README.md)
+- [uni-app 用户端说明](milk-tea-uniapp/README.md)
 
+## 验证命令
+
+```bash
+# 后端
+cd milk-tea-backend && mvn test
+
+# 管理后台
+cd milk-tea-admin && npm run build
+
+# uni-app H5
+cd milk-tea-uniapp && npm run build:h5
+```
+
+## 说明
+
+项目中的支付、短信验证码、部分打印和地图能力包含测试环境实现，生产部署前需要接入真实服务并补充密钥管理、支付回调、库存锁定和自动化集成测试。仓库中的 `milk-tea.apk` 仅用于开发验证。
+
+## 作者
+
+- GitHub: [dev-cai](https://github.com/dev-cai)
+- 技术博客: [CSDN](https://blog.csdn.net/weixin_45167912)
