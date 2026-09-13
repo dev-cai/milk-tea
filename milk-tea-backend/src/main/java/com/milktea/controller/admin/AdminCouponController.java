@@ -7,6 +7,9 @@ import com.milktea.service.CouponService;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
+import java.util.Map;
+
 
 /**
  * 管理端优惠券控制器
@@ -30,10 +33,15 @@ public class AdminCouponController {
     public Result<PageResult<Coupon>> getCouponPage(
             @RequestParam(defaultValue = "1") Integer page,
             @RequestParam(defaultValue = "10") Integer size,
-            @RequestParam(required = false) String keyword) {
-        // 简化实现，返回空结果
-        PageResult<Coupon> pageResult = new PageResult<>();
-        return Result.success("查询成功", pageResult);
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Integer type,
+            @RequestParam(required = false) Integer status) {
+        return couponService.getAdminCouponPage(page, size, keyword, type, status);
+    }
+
+    @GetMapping("/{id}")
+    public Result<Coupon> getCoupon(@PathVariable Long id) {
+        return couponService.getAdminCoupon(id);
     }
     
     /**
@@ -41,7 +49,7 @@ public class AdminCouponController {
      */
     @PostMapping
     public Result<String> addCoupon(@RequestBody Coupon coupon) {
-        return Result.success("添加成功");
+        return couponService.addAdminCoupon(coupon);
     }
     
     /**
@@ -50,7 +58,7 @@ public class AdminCouponController {
     @PutMapping("/{id}")
     public Result<String> updateCoupon(@PathVariable Long id, @RequestBody Coupon coupon) {
         coupon.setId(id);
-        return Result.success("更新成功");
+        return couponService.updateAdminCoupon(coupon);
     }
     
     /**
@@ -58,6 +66,16 @@ public class AdminCouponController {
      */
     @DeleteMapping("/{id}")
     public Result<String> deleteCoupon(@PathVariable Long id) {
-        return Result.success("删除成功");
+        return couponService.deleteAdminCoupon(id);
+    }
+
+    @GetMapping("/{id}/usage")
+    public Result<List<Map<String, Object>>> getCouponUsage(@PathVariable Long id) {
+        return couponService.getAdminCouponUsage(id);
+    }
+
+    @DeleteMapping("/batch")
+    public Result<String> batchDeleteCoupons(@RequestBody List<Long> ids) {
+        return couponService.batchDeleteAdminCoupons(ids);
     }
 }

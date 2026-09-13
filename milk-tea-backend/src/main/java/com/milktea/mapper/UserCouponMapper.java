@@ -6,8 +6,10 @@ import com.milktea.entity.UserCoupon;
 import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Param;
 import org.apache.ibatis.annotations.Select;
+import org.apache.ibatis.annotations.Update;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 用户优惠券Mapper
@@ -15,6 +17,16 @@ import java.util.List;
  */
 @Mapper
 public interface UserCouponMapper extends BaseMapper<UserCoupon> {
+
+    @Select("SELECT uc.user_id AS userId, u.username AS username, uc.order_id AS orderId, " +
+            "o.order_no AS orderNo, uc.use_time AS useTime, uc.status AS status " +
+            "FROM user_coupon uc LEFT JOIN user u ON u.id = uc.user_id " +
+            "LEFT JOIN orders o ON o.id = uc.order_id " +
+            "WHERE uc.coupon_id = #{couponId} ORDER BY uc.use_time DESC, uc.create_time DESC")
+    List<Map<String, Object>> selectUsageByCouponId(@Param("couponId") Long couponId);
+
+    @Update("UPDATE user_coupon SET status = 1, order_id = #{orderId}, use_time = NOW() WHERE id = #{userCouponId} AND user_id = #{userId} AND status = 0")
+    int consumeIfAvailable(@Param("userCouponId") Long userCouponId, @Param("userId") Long userId, @Param("orderId") Long orderId);
     
     /**
      * 查询用户优惠券列表（包含优惠券详情）

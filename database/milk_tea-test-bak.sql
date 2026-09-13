@@ -931,8 +931,6 @@ INSERT INTO `system_config` VALUES (2, 'shop_logo', '', '店铺Logo', 1, '2025-1
 INSERT INTO `system_config` VALUES (3, 'shop_phone', '400-123-4567', '联系电话', 1, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
 INSERT INTO `system_config` VALUES (4, 'shop_address', '北京市朝阳区建国路88号', '联系地址', 1, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
 INSERT INTO `system_config` VALUES (5, 'payment_wechat_enabled', 'true', '微信支付开关', 3, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
-INSERT INTO `system_config` VALUES (6, 'payment_alipay_enabled', 'false', '支付宝支付开关', 3, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
-INSERT INTO `system_config` VALUES (7, 'payment_balance_enabled', 'true', '余额支付开关', 3, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
 INSERT INTO `system_config` VALUES (8, 'order_auto_cancel_time', '30', '订单自动取消时间（分钟）', 2, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
 INSERT INTO `system_config` VALUES (9, 'order_prepare_time', '15', '预计制作时间（分钟）', 2, '2025-11-20 09:47:37', '2025-11-20 09:47:37');
 INSERT INTO `system_config` VALUES (10, 'order_auto_complete_time', '24', '订单自动完成时间（小时）', 2, '2025-11-20 09:47:37', '2025-11-20 09:47:37');

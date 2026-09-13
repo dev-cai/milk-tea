@@ -41,12 +41,6 @@
             <el-form-item label="微信支付">
               <el-switch v-model="paymentForm.wechatEnabled" />
             </el-form-item>
-            <el-form-item label="支付宝支付">
-              <el-switch v-model="paymentForm.alipayEnabled" />
-            </el-form-item>
-            <el-form-item label="余额支付">
-              <el-switch v-model="paymentForm.balanceEnabled" />
-            </el-form-item>
             <el-form-item>
               <el-button type="primary" @click="savePaymentConfig">保存</el-button>
             </el-form-item>
@@ -200,9 +194,7 @@ const basicForm = reactive({
 })
 
 const paymentForm = reactive({
-  wechatEnabled: true,
-  alipayEnabled: false,
-  balanceEnabled: true
+  wechatEnabled: true
 })
 
 const orderForm = reactive({
@@ -237,8 +229,6 @@ const loadConfig = async () => {
       
       // 支付配置
       paymentForm.wechatEnabled = config.payment_wechat_enabled === 'true'
-      paymentForm.alipayEnabled = config.payment_alipay_enabled === 'true'
-      paymentForm.balanceEnabled = config.payment_balance_enabled === 'true'
       
       // 订单配置
       orderForm.autoCancelTime = parseInt(config.order_auto_cancel_time || '30')
@@ -303,8 +293,6 @@ const savePaymentConfig = async () => {
   try {
     const configMap = {
       payment_wechat_enabled: paymentForm.wechatEnabled.toString(),
-      payment_alipay_enabled: paymentForm.alipayEnabled.toString(),
-      payment_balance_enabled: paymentForm.balanceEnabled.toString()
     }
     
     const res = await batchUpdateConfig(configMap)

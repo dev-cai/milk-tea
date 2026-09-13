@@ -101,7 +101,7 @@ export default {
 				let res
 				if (this.activityType === 'new_product') {
 					// 加载新品
-					res = await api.product.getPage({
+					res = await api.product.getList({
 						page: 1,
 						size: 20,
 						sortType: 'default',

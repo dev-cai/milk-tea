@@ -10,6 +10,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 积分控制器
@@ -30,8 +31,8 @@ public class PointsController {
     public Result<PageResult<PointsHistory>> getHistory(
             @RequestParam Long userId,
             @RequestParam(defaultValue = "1") Integer page,
-            @RequestParam(defaultValue = "10") Integer size) {
-        PageResult<PointsHistory> result = pointsService.getHistory(userId, page, size);
+            @RequestParam(defaultValue = "10") Integer size, HttpServletRequest request) {
+        PageResult<PointsHistory> result = pointsService.getHistory(verifyUser(userId, request), page, size);
         return Result.success(result);
     }
     
@@ -50,9 +51,9 @@ public class PointsController {
      * 积分兑换
      */
     @PostMapping("/exchange")
-    public Result<String> exchange(@RequestBody Map<String, Object> request) {
+    public Result<String> exchange(@RequestBody Map<String, Object> request, HttpServletRequest servletRequest) {
         try {
-            Long userId = Long.valueOf(request.get("userId").toString());
+            Long userId = Long.valueOf(servletRequest.getAttribute("authenticatedUserId").toString());
             Long productId = Long.valueOf(request.get("productId").toString());
             Integer quantity = Integer.valueOf(request.getOrDefault("quantity", 1).toString());
             
@@ -60,6 +61,7 @@ public class PointsController {
             return Result.success("兑换成功");
         } catch (Exception e) {
             log.error("积分兑换失败", e);
+            if (e instanceof com.milktea.exception.BusinessException) throw (com.milktea.exception.BusinessException) e;
             return Result.error(e.getMessage());
         }
     }
@@ -68,14 +70,23 @@ public class PointsController {
      * 每日签到
      */
     @PostMapping("/checkin")
-    public Result<String> checkin(@RequestBody Map<String, Object> request) {
+    public Result<String> checkin(@RequestBody Map<String, Object> request, HttpServletRequest servletRequest) {
         try {
-            Long userId = Long.valueOf(request.get("userId").toString());
+            Long userId = Long.valueOf(servletRequest.getAttribute("authenticatedUserId").toString());
             pointsService.checkin(userId);
             return Result.success("签到成功，获得10积分");
         } catch (Exception e) {
             log.error("签到失败", e);
+            if (e instanceof com.milktea.exception.BusinessException) throw (com.milktea.exception.BusinessException) e;
             return Result.error(e.getMessage());
         }
+    }
+
+    private Long verifyUser(Long suppliedUserId, HttpServletRequest request) {
+        Object id = request.getAttribute("authenticatedUserId");
+        if (id == null) throw new org.springframework.security.access.AccessDeniedException("请先登录");
+        Long current = Long.valueOf(id.toString());
+        if (!current.equals(suppliedUserId)) throw new org.springframework.security.access.AccessDeniedException("无权操作其他用户数据");
+        return current;
     }
 }

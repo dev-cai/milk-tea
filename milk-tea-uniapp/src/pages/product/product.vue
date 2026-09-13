@@ -1,5 +1,5 @@
 <template>
-	<view class="container">
+	<view class="container" v-if="product">
 		<!-- 商品图片轮播 -->
 		<view class="product-images">
 			<swiper class="image-swiper" indicator-dots="true" autoplay="false" interval="3000" duration="500">
@@ -236,6 +236,7 @@
 			</view>
 		</view>
 	</view>
+	<view v-else class="empty-state"><text>商品暂不可用</text></view>
 </template>
 
 <script>
@@ -306,42 +307,8 @@ export default {
 				}
 			} catch (error) {
 				console.error('加载商品详情失败:', error)
-				// 使用模拟数据
-				this.product = {
-					id: this.productId,
-					name: '珍珠奶茶',
-					description: '经典珍珠奶茶，香甜可口，Q弹珍珠',
-					price: 18.00,
-					originalPrice: 22.00,
-					memberPrice: 16.00,
-					sales: 999,
-					rating: 4.8,
-					tags: ['热销', '经典'],
-					isCollected: false,
-					detailDescription: '精选优质茶叶，搭配新鲜牛奶，加入Q弹珍珠，口感层次丰富。',
-					nutrition: [
-						{ name: '热量', value: '320kcal' },
-						{ name: '蛋白质', value: '8g' },
-						{ name: '脂肪', value: '12g' },
-						{ name: '碳水化合物', value: '45g' }
-					],
-					reviews: [
-						{
-							id: 1,
-							userName: '奶茶爱好者',
-							userAvatar: '/static/avatar1.jpg',
-							rating: 5,
-							content: '味道很棒，珍珠很Q弹！',
-							createTime: '2024-11-10',
-							images: []
-						}
-					],
-					reviewSummary: {
-						rating: 4.8,
-						count: 128
-					}
-				}
-				this.productImages = ['/static/product1.jpg', '/static/product1-2.jpg']
+				this.product = null
+				uni.showToast({ title: error.message || '商品加载失败', icon: 'none' })
 			}
 		},
 
@@ -434,12 +401,7 @@ export default {
 					})
 				}
 			} catch (error) {
-				// 模拟操作
-				this.product.isCollected = !this.product.isCollected
-				uni.showToast({
-					title: this.product.isCollected ? '收藏成功' : '已取消收藏',
-					icon: 'success'
-				})
+				uni.showToast({ title: error.message || '收藏操作失败', icon: 'none' })
 			}
 		},
 

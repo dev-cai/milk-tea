@@ -265,10 +265,10 @@ export default {
 		// 获取支付方式文本
 		getPaymentMethodText(method) {
 			const methods = {
-				1: '微信支付',
-				2: '支付宝',
-				3: '余额支付',
-				4: '组合支付'
+				1: '微信支付（开发测试）',
+				2: '微信支付（历史订单）',
+				3: '微信支付（历史订单）',
+				4: '微信支付（历史订单）'
 			}
 			return methods[method] || '未知'
 		},

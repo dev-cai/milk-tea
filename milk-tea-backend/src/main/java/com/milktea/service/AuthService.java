@@ -10,6 +10,7 @@ import com.milktea.utils.MD5Utils;
 import com.milktea.utils.ValidationUtils;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
@@ -26,10 +27,14 @@ public class AuthService {
     
     private final UserMapper userMapper;
     private final JwtUtils jwtUtils;
+    private final PasswordEncoder passwordEncoder;
+    private final InviteService inviteService;
     
-    public AuthService(UserMapper userMapper, JwtUtils jwtUtils) {
+    public AuthService(UserMapper userMapper, JwtUtils jwtUtils, PasswordEncoder passwordEncoder, InviteService inviteService) {
         this.userMapper = userMapper;
         this.jwtUtils = jwtUtils;
+        this.passwordEncoder = passwordEncoder;
+        this.inviteService = inviteService;
     }
     
     /**
@@ -59,8 +64,14 @@ public class AuthService {
         }
         
         // 验证密码
-        if (!MD5Utils.matches(password, user.getPassword())) {
+        boolean matches = user.getPassword() != null && user.getPassword().startsWith("$2")
+                ? passwordEncoder.matches(password, user.getPassword())
+                : MD5Utils.matches(password, user.getPassword());
+        if (!matches) {
             throw new BusinessException("密码错误");
+        }
+        if (user.getPassword() != null && !user.getPassword().startsWith("$2")) {
+            user.setPassword(passwordEncoder.encode(password));
         }
         
         // 更新最后登录时间
@@ -68,10 +79,11 @@ public class AuthService {
         userMapper.updateById(user);
         
         // 生成Token
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getUserType());
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getUserType(), user.getTokenVersion());
         
         Map<String, Object> result = new HashMap<>();
         result.put("token", token);
+        result.put("refreshToken", jwtUtils.generateRefreshToken(user.getId(), user.getUsername(), user.getUserType(), user.getTokenVersion()));
         
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("id", user.getId());
@@ -112,7 +124,7 @@ public class AuthService {
         // 创建新用户
         User user = new User();
         user.setUsername(username);
-        user.setPassword(MD5Utils.encode(password));
+        user.setPassword(passwordEncoder.encode(password));
         user.setNickname(nickname);
         user.setMemberLevel(0); // 普通会员
         user.setPoints(0);
@@ -151,7 +163,7 @@ public class AuthService {
             user = new User();
             user.setPhone(phone);
             user.setUsername(phone); // 直接使用手机号作为用户名
-            user.setPassword(MD5Utils.encode("123456")); // 默认密码
+            user.setPassword(passwordEncoder.encode("123456")); // 默认密码
             user.setNickname("用户" + phone.substring(7)); // 昵称显示后4位
             user.setMemberLevel(0);
             user.setPoints(0);
@@ -179,11 +191,12 @@ public class AuthService {
         userMapper.updateById(user);
         
         // 生成Token
-        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getUserType());
+        String token = jwtUtils.generateToken(user.getId(), user.getUsername(), user.getUserType(), user.getTokenVersion());
         
         // 构建返回数据
         Map<String, Object> result = new HashMap<>();
         result.put("token", token);
+        result.put("refreshToken", jwtUtils.generateRefreshToken(user.getId(), user.getUsername(), user.getUserType(), user.getTokenVersion()));
         
         Map<String, Object> userInfo = new HashMap<>();
         userInfo.put("id", user.getId());
@@ -206,28 +219,36 @@ public class AuthService {
         
         return Result.success("登录成功", result);
     }
+
+    public Result<Map<String, Object>> refresh(String refreshToken) {
+        if (refreshToken == null || !jwtUtils.validateToken(refreshToken) || !jwtUtils.isRefreshToken(refreshToken)) {
+            throw new BusinessException(401, "刷新令牌无效或已过期");
+        }
+        Long userId = jwtUtils.getUserIdFromToken(refreshToken);
+        User user = userMapper.selectById(userId);
+        Integer tokenVersion = jwtUtils.getTokenVersionFromToken(refreshToken);
+        if (user == null || user.getStatus() == null || user.getStatus() == 0
+                || (tokenVersion != null && !java.util.Objects.equals(tokenVersion, user.getTokenVersion() == null ? 0 : user.getTokenVersion()))) {
+            throw new BusinessException(401, "用户不可用");
+        }
+        Map<String, Object> result = new HashMap<>();
+        result.put("token", jwtUtils.generateToken(user.getId(), user.getUsername(), user.getUserType(), user.getTokenVersion()));
+        result.put("refreshToken", refreshToken);
+        return Result.success("刷新成功", result);
+    }
     
     /**
      * 处理邀请奖励
      */
     private void handleInviteReward(Long newUserId, String inviteCode) {
         try {
-            // 解析邀请码获取邀请人ID
-            // 这里简化处理，实际应该有专门的邀请码表
-            log.info("处理邀请奖励 - 新用户ID: {}, 邀请码: {}", newUserId, inviteCode);
-            
-            // 给新用户增加50积分
+            inviteService.bindInviteCode(newUserId, inviteCode);
             User newUser = userMapper.selectById(newUserId);
             if (newUser != null) {
                 newUser.setPoints(newUser.getPoints() + 50);
                 userMapper.updateById(newUser);
                 log.info("新用户获得邀请奖励50积分");
             }
-            
-            // TODO: 给邀请人增加50积分
-            // 需要根据邀请码查找邀请人，然后增加积分
-            // 这里需要实现邀请码与用户ID的映射关系
-            
         } catch (Exception e) {
             log.error("处理邀请奖励失败", e);
             // 不影响登录流程

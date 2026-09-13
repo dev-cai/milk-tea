@@ -6,10 +6,9 @@
 
 - 🎨 **现代化UI** - Element Plus组件库，美观易用
 - 📊 **数据可视化** - ECharts图表，直观展示数据
-- 🔐 **权限管理** - JWT认证，角色权限控制
+- 🔐 **安全访问** - JWT认证与后台路由登录保护
 - 📱 **响应式设计** - 适配不同屏幕尺寸
 - ⚡ **快速开发** - Vite构建，热更新快速
-- 🎯 **TypeScript支持** - 类型安全（可选）
 
 ## 🛠️ 技术栈
 
@@ -20,7 +19,6 @@
 - **HTTP客户端**: Axios 1.5+
 - **图表库**: ECharts 5.4+
 - **构建工具**: Vite 4.4+
-- **代码规范**: ESLint + Prettier
 
 ## 📁 项目结构
 
@@ -113,7 +111,7 @@ npm install
 npm run dev
 \`\`\`
 
-访问 http://localhost:5173
+访问 http://localhost:3000
 
 ### 生产构建
 
@@ -295,8 +293,7 @@ css: {
 
 ### 代码规范
 
-- 使用 ESLint 进行代码检查
-- 使用 Prettier 进行代码格式化
+- 当前项目使用 JavaScript + Vue 3 Composition API；提交前执行生产构建验证
 - 组件命名使用 PascalCase
 - 方法命名使用 camelCase
 - 常量命名使用 UPPER_SNAKE_CASE
@@ -316,8 +313,8 @@ chore: 构建/工具相关
 ### 组件开发规范
 
 1. 使用 Composition API
-2. 使用 \`<script setup>\` 语法
-3. Props 定义使用 TypeScript 类型
+2. 优先使用 \`<script setup>\` 语法
+3. Props 使用明确的 JavaScript 默认值和校验
 4. 事件命名使用 kebab-case
 5. 样式使用 scoped
 
@@ -336,14 +333,6 @@ npm run build
 # 预览构建
 npm run preview
 
-# 代码检查
-npm run lint
-
-# 代码格式化
-npm run format
-
-# 生成页面模板
-node scripts/generate-admin-pages.js
 \`\`\`
 
 ## 📚 相关文档

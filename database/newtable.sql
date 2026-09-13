@@ -102,7 +102,7 @@ CREATE TABLE `orders` (
   `discount_amount` decimal(10,2) DEFAULT '0.00' COMMENT '优惠金额',
   `pay_amount` decimal(10,2) NOT NULL COMMENT '实付金额',
   `actual_amount` decimal(10,2) NOT NULL COMMENT '实际支付金额',
-  `pay_type` int(11) DEFAULT NULL COMMENT '支付方式：1-微信支付，2-余额支付，3-组合支付',
+  `pay_type` int(11) DEFAULT NULL COMMENT '支付方式：1-微信支付（沙箱）',
   `status` int(11) DEFAULT '0' COMMENT '订单状态：0-待支付，1-待制作，2-制作中，3-待取餐，4-已完成，5-已取消，6-退款中，7-已退款',
   `remark` varchar(255) DEFAULT NULL COMMENT '备注',
   `refund_reason` varchar(255) DEFAULT NULL COMMENT '退款原因',

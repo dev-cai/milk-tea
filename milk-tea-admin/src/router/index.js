@@ -177,6 +177,13 @@ router.beforeEach((to, from, next) => {
     next('/login')
   } else if (to.path === '/login' && token) {
     next('/')
+  } else if (to.path !== '/login') {
+    const user = JSON.parse(localStorage.getItem('user') || 'null')
+    if (user && user.userType !== undefined && Number(user.userType) !== 1) {
+      next('/login')
+    } else {
+      next()
+    }
   } else {
     next()
   }

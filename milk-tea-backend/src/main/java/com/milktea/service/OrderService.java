@@ -24,6 +24,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 
 /**
  * 订单服务类
@@ -40,12 +41,13 @@ public class OrderService {
     private final com.milktea.mapper.ComplaintMapper complaintMapper;
     private final com.milktea.mapper.RefundRequestMapper refundRequestMapper;
     private final ReviewMapper reviewMapper;
+    private final CouponService couponService;
     
     public OrderService(OrderMapper orderMapper, OrderItemMapper orderItemMapper, ProductMapper productMapper, 
                        com.milktea.mapper.UserMapper userMapper,
                        com.milktea.mapper.ComplaintMapper complaintMapper,
                        com.milktea.mapper.RefundRequestMapper refundRequestMapper,
-                       ReviewMapper reviewMapper) {
+                       ReviewMapper reviewMapper, CouponService couponService) {
         this.orderMapper = orderMapper;
         this.orderItemMapper = orderItemMapper;
         this.productMapper = productMapper;
@@ -53,6 +55,7 @@ public class OrderService {
         this.complaintMapper = complaintMapper;
         this.refundRequestMapper = refundRequestMapper;
         this.reviewMapper = reviewMapper;
+        this.couponService = couponService;
     }
     
     /**
@@ -117,7 +120,9 @@ public class OrderService {
                 orderItem.setProductId(product.getId());
                 orderItem.setProductName(product.getName());
                 orderItem.setProductImage(product.getImage());
-                orderItem.setPrice(product.getPrice()); // 保存商品基础价格
+                BigDecimal unitPrice = product.getMemberPrice() != null && user.getMemberLevel() != null && user.getMemberLevel() > 0
+                        ? product.getMemberPrice() : product.getPrice();
+                orderItem.setPrice(unitPrice);
                 orderItem.setQuantity(itemRequest.getQuantity());
                 orderItem.setSweetness(itemRequest.getSweetness());
                 orderItem.setTemperature(itemRequest.getTemperature());
@@ -128,12 +133,11 @@ public class OrderService {
                 log.info("订单项插入成功");
                 
                 // 计算该商品的总金额（商品价格 × 数量）
-                BigDecimal itemAmount = product.getPrice().multiply(new BigDecimal(itemRequest.getQuantity()));
+                BigDecimal itemAmount = unitPrice.multiply(new BigDecimal(itemRequest.getQuantity()));
                 
                 // 计算加料价格
-                if (itemRequest.getToppings() != null && !itemRequest.getToppings().isEmpty()) {
-                    String[] toppings = itemRequest.getToppings().split(",");
-                    int toppingCount = toppings.length;
+                int toppingCount = countToppings(itemRequest.getToppings());
+                if (toppingCount > 0) {
                     BigDecimal toppingPrice = new BigDecimal("3.00"); // 每个加料3元
                     BigDecimal toppingAmount = toppingPrice.multiply(new BigDecimal(toppingCount)).multiply(new BigDecimal(itemRequest.getQuantity()));
                     itemAmount = itemAmount.add(toppingAmount);
@@ -154,15 +158,25 @@ public class OrderService {
             // 更新订单总金额
             log.info("更新订单总金额: {}", totalAmount);
             order.setTotalAmount(totalAmount);
-            order.setPayAmount(totalAmount);
-            order.setActualAmount(totalAmount); // 实付金额等于应付金额
+            BigDecimal discount = request.getUserCouponId() == null ? BigDecimal.ZERO
+                    : couponService.calculateDiscount(request.getUserId(), request.getUserCouponId(), totalAmount);
+            BigDecimal payAmount = totalAmount.subtract(discount).max(BigDecimal.ZERO);
+            order.setDiscountAmount(discount);
+            order.setPayAmount(payAmount);
+            order.setActualAmount(payAmount);
             orderMapper.updateById(order);
+            if (request.getUserCouponId() != null) {
+                couponService.consumeCoupon(request.getUserCouponId(), request.getUserId(), order.getId());
+            }
             log.info("订单更新成功");
             
             Map<String, Object> result = new HashMap<>();
             result.put("orderId", order.getId());
             result.put("orderNo", orderNo);
             result.put("totalAmount", totalAmount);
+            result.put("discountAmount", discount);
+            result.put("payAmount", payAmount);
+            result.put("actualAmount", payAmount);
             
             log.info("订单创建完成，订单号: {}", orderNo);
             return Result.success("订单创建成功", result);
@@ -174,6 +188,18 @@ public class OrderService {
             log.error("创建订单失败", e);
             throw new BusinessException("创建订单失败: " + e.getMessage());
         }
+    }
+
+    /** Count comma-separated or JSON-array topping values without charging for an empty array. */
+    private int countToppings(String toppings) {
+        if (toppings == null || toppings.trim().isEmpty() || "[]".equals(toppings.trim())) return 0;
+        String normalized = toppings.trim();
+        if (normalized.startsWith("[") && normalized.endsWith("]")) {
+            normalized = normalized.substring(1, normalized.length() - 1).trim();
+            if (normalized.isEmpty()) return 0;
+        }
+        return (int) java.util.Arrays.stream(normalized.split(","))
+                .map(String::trim).filter(value -> !value.isEmpty()).count();
     }
     
     /**
@@ -258,22 +284,23 @@ public class OrderService {
         if (order.getStatus() != 0 && order.getStatus() != 1) {
             throw new BusinessException("订单状态不允许取消");
         }
+        OrderStateMachine.assertTransition(order.getStatus(), 5);
         
         // 恢复库存
         LambdaQueryWrapper<OrderItem> queryWrapper = new LambdaQueryWrapper<>();
         queryWrapper.eq(OrderItem::getOrderId, orderId);
         List<OrderItem> orderItems = orderItemMapper.selectList(queryWrapper);
         
+        int changed = orderMapper.updateStatusIf(orderId, userId, order.getStatus(), 5);
+        if (changed != 1) {
+            throw new BusinessException("订单状态已变更，请刷新后重试");
+        }
         for (OrderItem item : orderItems) {
-            Product product = productMapper.selectById(item.getProductId());
-            if (product != null) {
-                product.setStock(product.getStock() + item.getQuantity());
-                productMapper.updateById(product);
-            }
+            productMapper.incrementStock(item.getProductId(), item.getQuantity());
         }
         
         // 更新订单状态
-        order.setStatus(5); // 已取消
+        order.setStatus(5);
         order.setCancelTime(LocalDateTime.now());
         orderMapper.updateById(order);
         
@@ -298,7 +325,12 @@ public class OrderService {
         if (order.getStatus() < 1 || order.getStatus() > 4) {
             throw new BusinessException("当前订单状态不允许申请退款");
         }
+        OrderStateMachine.assertTransition(order.getStatus(), 6);
         
+        if (orderMapper.updateStatusIf(orderId, userId, order.getStatus(), 6) != 1) {
+            throw new BusinessException("订单状态已变更，请刷新后重试");
+        }
+
         // 创建退款申请记录
         RefundRequest refundRequest = new RefundRequest();
         refundRequest.setOrderId(order.getId());
@@ -311,8 +343,8 @@ public class OrderService {
         
         refundRequestMapper.insert(refundRequest);
         
-        // 更新订单状态为退款中
-        order.setStatus(6); // 申请退款
+        // 记录退款原因（状态已通过条件更新置为退款中）
+        order.setStatus(6);
         order.setRefundReason(reason);
         orderMapper.updateById(order);
         
@@ -337,6 +369,7 @@ public class OrderService {
         if (order.getStatus() != 3) {
             throw new BusinessException("只有待取餐的订单才能确认收货");
         }
+        OrderStateMachine.assertTransition(order.getStatus(), 4);
         
         // 更新订单状态为已完成
         order.setStatus(4);
@@ -416,8 +449,7 @@ public class OrderService {
      */
     private String generateOrderNo() {
         String timestamp = LocalDateTime.now().format(DateTimeFormatter.ofPattern("yyyyMMddHHmmss"));
-        String random = String.valueOf((int) (Math.random() * 1000));
-        return "MT" + timestamp + String.format("%03d", Integer.parseInt(random));
+        return "MT" + timestamp + UUID.randomUUID().toString().replace("-", "").substring(0, 16);
     }
     
     /**

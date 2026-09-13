@@ -145,7 +145,8 @@
           </el-col>
           <el-col :span="12">
             <el-form-item label="会员价格" prop="memberPrice">
-              <el-input-number v-model="productForm.memberPrice" :precision="2" :min="0" style="width: 100%;" />
+              <el-input-number v-model="productForm.memberPrice" :precision="2" :min="0" :max="productForm.price || undefined" style="width: 100%;" />
+              <div class="form-tip">留空或填 0 表示不设置会员价，会员价不能高于原价</div>
             </el-form-item>
           </el-col>
         </el-row>
@@ -631,6 +632,12 @@ onMounted(() => {
 
 .no-image {
   font-size: 12px;
+}
+
+.form-tip {
+  color: #909399;
+  font-size: 12px;
+  line-height: 18px;
 }
 
 </style>

@@ -24,6 +24,7 @@ spring:
       max-lifetime: 1800000
       connection-timeout: 30000
       connection-test-query: SELECT 1
+      leak-detection-threshold: 20000
   
   # Redis配置
   data:
@@ -53,7 +54,7 @@ mybatis-plus:
   configuration:
     map-underscore-to-camel-case: true
     cache-enabled: false
-    log-impl: org.apache.ibatis.logging.stdout.StdOutImpl
+    log-impl: org.apache.ibatis.logging.slf4j.Slf4jImpl
   global-config:
     db-config:
       id-type: auto
@@ -64,7 +65,8 @@ mybatis-plus:
 # JWT配置
 jwt:
   secret: ${JWT_SECRET:dev-only-change-this-secret-before-deploy}
-  expiration: 604800
+  expiration: ${JWT_ACCESS_EXPIRATION:1800}
+  refresh-expiration: ${JWT_REFRESH_EXPIRATION:604800}
 
 # 文件上传配置
 file:
@@ -76,8 +78,8 @@ file:
 # 日志配置
 logging:
   level:
-    com.milktea: debug
-    com.baomidou.mybatisplus: debug
+    com.milktea: info
+    com.baomidou.mybatisplus: warn
   pattern:
     console: '%d{yyyy-MM-dd HH:mm:ss} - %msg%n'
     file: '%d{yyyy-MM-dd HH:mm:ss} [%thread] %-5level %logger{36} - %msg%n'

@@ -17,7 +17,7 @@ import java.io.IOException;
  * @author MilkTea Team
  */
 @RestController
-@RequestMapping("/api/uploads")
+@RequestMapping("/uploads")
 public class AdminImageController {
     
     /**

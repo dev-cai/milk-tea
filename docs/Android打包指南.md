@@ -237,12 +237,11 @@ dist/build/app/
 3. 查看日志定位问题
 
 ### Q4: 如何修改API地址？
-**A:** 修改 `src/utils/api.js` 中的 `baseUrl`：
+**A:** 在 `milk-tea-uniapp` 根目录创建 `.env.production`，配置正式 HTTPS API 地址。构建工具会通过 `VITE_API_BASE_URL` 注入，无需修改源码：
 ```javascript
-const config = {
-  baseUrl: 'http://your-server-ip:8080/api'
-}
+VITE_API_BASE_URL=https://api.example.com/api
 ```
+开发环境可在 `.env.development` 中使用本地地址，例如 `http://localhost:8080/api`。
 
 ### Q5: 如何上架应用商店？
 **A:** 需要：

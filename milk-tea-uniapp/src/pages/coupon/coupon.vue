@@ -178,10 +178,12 @@ export default {
 			myCoupons: [],
 			loading: false,
 			showHelpPopup: false,
-			userInfo: {}
+			userInfo: {},
+			selectMode: false
 		}
 	},
 	onLoad(options) {
+		this.selectMode = options && options.select === 'true'
 		this.loadUserInfo()
 		this.loadCoupons()
 	},
@@ -339,6 +341,11 @@ export default {
 
 		// 使用优惠券（跳转到商品列表）
 		useCoupon(coupon) {
+			if (this.selectMode) {
+				uni.setStorageSync('selectedCoupon', coupon)
+				uni.navigateBack()
+				return
+			}
 			uni.switchTab({
 				url: '/pages/index/index'
 			})

@@ -107,6 +107,7 @@ public class AdminOrderService {
             throw new BusinessException("订单不存在");
         }
         
+        OrderStateMachine.assertTransition(order.getStatus(), status);
         order.setStatus(status);
         
         // 根据状态设置相应时间
@@ -143,21 +144,17 @@ public class AdminOrderService {
             queryWrapper.eq(OrderItem::getOrderId, orderId);
             List<OrderItem> orderItems = orderItemMapper.selectList(queryWrapper);
             
-            for (OrderItem item : orderItems) {
-                Product product = productMapper.selectById(item.getProductId());
-                if (product != null) {
-                    product.setStock(product.getStock() + item.getQuantity());
-                    productMapper.updateById(product);
-                }
+            OrderStateMachine.assertTransition(order.getStatus(), 7);
+            if (orderMapper.updateStatusIfExpected(orderId, 6, 7) != 1) {
+                throw new BusinessException("退款状态已变更，请刷新后重试");
             }
-            
-            order.setStatus(7); // 已退款
+            for (OrderItem item : orderItems) productMapper.incrementStock(item.getProductId(), item.getQuantity());
         } else {
             // 拒绝退款，恢复为已完成状态
-            order.setStatus(4);
+            if (orderMapper.updateStatusIfExpected(orderId, 6, 4) != 1) {
+                throw new BusinessException("退款状态已变更，请刷新后重试");
+            }
         }
-        
-        orderMapper.updateById(order);
         return Result.success(approve ? "退款成功" : "退款已拒绝");
     }
     

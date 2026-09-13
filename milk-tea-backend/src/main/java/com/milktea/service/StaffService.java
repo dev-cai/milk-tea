@@ -7,7 +7,7 @@ import com.milktea.entity.Staff;
 import com.milktea.mapper.StaffMapper;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
-import org.springframework.util.DigestUtils;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
 
 import java.time.LocalDateTime;
@@ -22,6 +22,8 @@ public class StaffService {
 
     @Autowired
     private StaffMapper staffMapper;
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     /**
      * 分页查询员工列表
@@ -109,11 +111,11 @@ public class StaffService {
             throw new RuntimeException("工号已存在");
         }
         
-        // 设置默认密码（MD5加密）
+        // 设置默认密码（BCrypt加密）
         if (!StringUtils.hasText(staff.getPassword())) {
-            staff.setPassword(DigestUtils.md5DigestAsHex("123456".getBytes()));
+            staff.setPassword(passwordEncoder.encode("123456"));
         } else {
-            staff.setPassword(DigestUtils.md5DigestAsHex(staff.getPassword().getBytes()));
+            staff.setPassword(passwordEncoder.encode(staff.getPassword()));
         }
         
         // 设置默认状态
@@ -191,7 +193,7 @@ public class StaffService {
         }
         
         // 重置为默认密码123456
-        staff.setPassword(DigestUtils.md5DigestAsHex("123456".getBytes()));
+        staff.setPassword(passwordEncoder.encode("123456"));
         return staffMapper.updateById(staff) > 0;
     }
 

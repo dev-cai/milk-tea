@@ -103,50 +103,9 @@ export default {
 		return {
 			userInfo: {},
 			activeTab: 'products',
-			exchangeProducts: [
-				{
-					id: 1,
-					name: '珍珠奶茶',
-					image: '/static/product1.jpg',
-					points: 200,
-					stock: 50
-				},
-				{
-					id: 2,
-					name: '芝士奶盖',
-					image: '/static/product2.jpg',
-					points: 300,
-					stock: 30
-				}
-			],
-			exchangeCoupons: [
-				{
-					id: 1,
-					name: '5元优惠券',
-					desc: '满20元可用',
-					points: 100
-				},
-				{
-					id: 2,
-					name: '10元优惠券',
-					desc: '满50元可用',
-					points: 200
-				}
-			],
-			pointsHistory: [
-				{
-					id: 1,
-					desc: '消费获得积分',
-					time: '2024-11-13 10:30',
-					points: 25
-				},
-				{
-					id: 2,
-					desc: '兑换优惠券',
-					time: '2024-11-12 15:20',
-					points: -100
-				}
-			]
+			exchangeProducts: [],
+			exchangeCoupons: [],
+			pointsHistory: []
 		}
 	},
 	onLoad() {
@@ -164,7 +123,19 @@ export default {
 
 		// 加载积分数据
 		async loadPointsData() {
-			// 这里应该调用API加载积分商品和历史记录
+			const userInfo = this.userInfo
+			if (!userInfo || !userInfo.id) return
+			try {
+				const [products, history] = await Promise.all([
+					api.points.getProducts({ page: 1, size: 50 }),
+					api.points.getHistory(userInfo.id, { page: 1, size: 50 })
+				])
+				this.exchangeProducts = products.data?.records || products.data || []
+				const records = history.data?.records || history.data || []
+				this.pointsHistory = records.map(record => ({ ...record, desc: record.description || record.reason, time: record.createTime }))
+			} catch (error) {
+				console.error('加载积分数据失败:', error)
+			}
 		},
 
 		// 切换标签
@@ -187,11 +158,10 @@ export default {
 				content: `确定用${product.points}积分兑换${product.name}吗？`,
 				success: (res) => {
 					if (res.confirm) {
-						// 调用兑换API
-						uni.showToast({
-							title: '兑换成功',
-							icon: 'success'
-						})
+						api.points.exchange({ userId: this.userInfo.id, productId: product.id, quantity: 1 }).then(() => {
+							uni.showToast({ title: '兑换成功', icon: 'success' })
+							this.loadPointsData()
+						}).catch(error => uni.showToast({ title: error.message || '兑换失败', icon: 'none' }))
 					}
 				}
 			})
@@ -212,11 +182,7 @@ export default {
 				content: `确定用${coupon.points}积分兑换${coupon.name}吗？`,
 				success: (res) => {
 					if (res.confirm) {
-						// 调用兑换API
-						uni.showToast({
-							title: '兑换成功',
-							icon: 'success'
-						})
+						uni.showToast({ title: '该券暂不支持积分兑换', icon: 'none' })
 					}
 				}
 			})

@@ -49,7 +49,7 @@ public class AdminService {
      * 分页查询订单
      */
     public Result<PageResult<Order>> getOrderPage(Integer page, Integer size, Integer status, 
-                                                  String orderNo, String startDate, String endDate) {
+                                                  String orderNo, String startDate, String endDate, Long userId) {
         Page<Order> pageObj = new Page<>(page, size);
         
         LambdaQueryWrapper<Order> queryWrapper = new LambdaQueryWrapper<>();
@@ -57,6 +57,7 @@ public class AdminService {
         if (status != null) {
             queryWrapper.eq(Order::getStatus, status);
         }
+        if (userId != null) queryWrapper.eq(Order::getUserId, userId);
         
         if (StringUtils.hasText(orderNo)) {
             queryWrapper.like(Order::getOrderNo, orderNo);
@@ -130,6 +131,7 @@ public class AdminService {
             throw new BusinessException("订单不存在");
         }
         
+        OrderStateMachine.assertTransition(order.getStatus(), status);
         order.setStatus(status);
         
         // 根据状态设置相应时间
@@ -166,13 +168,8 @@ public class AdminService {
             queryWrapper.eq(OrderItem::getOrderId, orderId);
             List<OrderItem> orderItems = orderItemMapper.selectList(queryWrapper);
             
-            for (OrderItem item : orderItems) {
-                Product product = productMapper.selectById(item.getProductId());
-                if (product != null) {
-                    product.setStock(product.getStock() + item.getQuantity());
-                    productMapper.updateById(product);
-                }
-            }
+            OrderStateMachine.assertTransition(order.getStatus(), 7);
+            for (OrderItem item : orderItems) productMapper.incrementStock(item.getProductId(), item.getQuantity());
             
             order.setStatus(7); // 已退款
         } else {
@@ -288,6 +285,7 @@ public class AdminService {
         }
         
         user.setStatus(status);
+        user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
         userMapper.updateById(user);
         return Result.success("状态更新成功");
     }
@@ -333,12 +331,31 @@ public class AdminService {
         return Result.success("积分更新成功");
     }
     
-    // 添加所有缺失的方法 - 返回模拟数据
+    @Transactional
     public Result<String> batchAcceptOrders(List<Long> orderIds) {
+        for (Long orderId : orderIds) {
+            Order order = orderMapper.selectById(orderId);
+            if (order != null) {
+                OrderStateMachine.assertTransition(order.getStatus(), 1);
+                order.setStatus(1);
+                order.setPayTime(order.getPayTime() == null ? LocalDateTime.now() : order.getPayTime());
+                orderMapper.updateById(order);
+            }
+        }
         return Result.success("批量接单成功");
     }
-    
+
+    @Transactional
     public Result<String> batchCompleteOrders(List<Long> orderIds) {
+        for (Long orderId : orderIds) {
+            Order order = orderMapper.selectById(orderId);
+            if (order != null) {
+                OrderStateMachine.assertTransition(order.getStatus(), 4);
+                order.setStatus(4);
+                order.setFinishTime(LocalDateTime.now());
+                orderMapper.updateById(order);
+            }
+        }
         return Result.success("批量完成成功");
     }
     
@@ -378,9 +395,16 @@ public class AdminService {
     
     public Result<Map<String, Object>> getTodayOrderOverview() {
         Map<String, Object> data = new HashMap<>();
-        data.put("totalOrders", 156);
-        data.put("totalAmount", 4580.50);
-        data.put("avgAmount", 29.36);
+        LocalDateTime start = LocalDateTime.now().toLocalDate().atStartOfDay();
+        LocalDateTime end = start.plusDays(1);
+        LambdaQueryWrapper<Order> wrapper = new LambdaQueryWrapper<Order>()
+                .ge(Order::getCreateTime, start).lt(Order::getCreateTime, end).ne(Order::getStatus, 5);
+        List<Order> orders = orderMapper.selectList(wrapper);
+        BigDecimal amount = orders.stream().map(Order::getPayAmount).filter(java.util.Objects::nonNull)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        data.put("totalOrders", orders.size());
+        data.put("totalAmount", amount);
+        data.put("avgAmount", orders.isEmpty() ? BigDecimal.ZERO : amount.divide(BigDecimal.valueOf(orders.size()), 2, java.math.RoundingMode.HALF_UP));
         return Result.success("获取成功", data);
     }
     
@@ -590,11 +614,13 @@ public class AdminService {
             }
             
             if (approve) {
+                if (refundRequestMapper.processIfPending(id, 1, null) != 1) throw new BusinessException("该退款申请已处理");
                 // 同意退款
                 refundRequest.setStatus(1);
                 refundRequest.setProcessTime(LocalDateTime.now());
                 
                 // 更新订单状态为已退款
+                OrderStateMachine.assertTransition(order.getStatus(), 7);
                 order.setStatus(7);
                 
                 // 恢复库存
@@ -603,22 +629,19 @@ public class AdminService {
                 List<OrderItem> orderItems = orderItemMapper.selectList(queryWrapper);
                 
                 for (OrderItem item : orderItems) {
-                    Product product = productMapper.selectById(item.getProductId());
-                    if (product != null) {
-                        product.setStock(product.getStock() + item.getQuantity());
-                        product.setSales(Math.max(0, product.getSales() - item.getQuantity()));
-                        productMapper.updateById(product);
-                    }
+                    productMapper.incrementStock(item.getProductId(), item.getQuantity());
                 }
                 
                 log.info("退款申请已同意: ID={}, 订单号={}, 金额={}", id, order.getOrderNo(), refundRequest.getRefundAmount());
             } else {
                 // 拒绝退款
+                if (refundRequestMapper.processIfPending(id, 2, rejectReason) != 1) throw new BusinessException("该退款申请已处理");
                 refundRequest.setStatus(2);
                 refundRequest.setRejectReason(rejectReason);
                 refundRequest.setProcessTime(LocalDateTime.now());
                 
                 // 恢复订单状态为已完成
+                OrderStateMachine.assertTransition(order.getStatus(), 4);
                 order.setStatus(4);
                 
                 log.info("退款申请已拒绝: ID={}, 订单号={}, 原因={}", id, order.getOrderNo(), rejectReason);
@@ -628,6 +651,8 @@ public class AdminService {
             orderMapper.updateById(order);
             
             return Result.success(approve ? "退款申请已同意" : "退款申请已拒绝");
+        } catch (BusinessException e) {
+            throw e;
         } catch (Exception e) {
             log.error("处理退款申请失败", e);
             return Result.error("处理失败: " + e.getMessage());

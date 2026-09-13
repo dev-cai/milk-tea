@@ -1,6 +1,6 @@
 # 奶茶小程序后端系统
 
-基于 Spring Boot 3 + MyBatis Plus + JWT 的奶茶小程序后端系统
+基于 Spring Boot 3 + MyBatis Plus + JWT 的奶茶小程序后端系统。密码使用 BCrypt 存储，历史 MD5 密文在登录成功后惰性迁移；JWT 使用 30 分钟 access token + 7 天 refresh token。
 
 ## 技术栈
 
@@ -9,6 +9,7 @@
 - **MySQL 8.0** - 数据库
 - **Redis** - 缓存
 - **JWT** - 认证授权
+- **微信支付开发测试流程** - 当前唯一支付渠道，需配置商户号、证书和回调后启用真实微信支付下单
 - **Spring Security** - 安全框架
 - **Lombok** - 简化代码
 - **Hutool** - 工具类库

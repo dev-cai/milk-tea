@@ -49,6 +49,11 @@ public class UserController {
     public Result<List<UserAddress>> getUserAddresses(@RequestParam Long userId, HttpServletRequest request) {
         return userService.getUserAddresses(verifyUser(userId, request));
     }
+
+    @GetMapping("/address/{id}")
+    public Result<UserAddress> getUserAddress(@PathVariable Long id, HttpServletRequest request) {
+        return userService.getUserAddress(id, currentUser(request));
+    }
     
     /**
      * 添加用户地址

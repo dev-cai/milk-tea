@@ -27,6 +27,10 @@ public class Product {
     
     private BigDecimal price;
     
+    /**
+     * 会员价允许显式写入 NULL（后台清空会员价时也必须真正落库）。
+     */
+    @TableField(updateStrategy = FieldStrategy.ALWAYS)
     private BigDecimal memberPrice;
     
     private BigDecimal cost;

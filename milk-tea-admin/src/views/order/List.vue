@@ -365,7 +365,7 @@ const getStatusText = (status) => {
 }
 
 const getPayTypeText = (payType) => {
-  const texts = { 1: '微信支付', 2: '余额支付', 3: '组合支付' }
+  const texts = { 1: '微信支付（开发测试）', 2: '微信支付（历史订单）', 3: '微信支付（历史订单）' }
   return texts[payType] || '未知'
 }
 

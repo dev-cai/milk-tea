@@ -238,20 +238,11 @@ export default {
 		// 加载搜索建议
 		async loadSearchSuggestions(keyword) {
 			try {
-				// 这里应该调用API获取搜索建议
-				// const res = await api.search.getSuggestions(keyword)
-				// this.suggestions = res.data || []
-				
-				// 模拟搜索建议
-				const mockSuggestions = [
-					{ id: 1, keyword: keyword + '奶茶', count: 15 },
-					{ id: 2, keyword: keyword + '咖啡', count: 8 },
-					{ id: 3, keyword: keyword + '果茶', count: 12 }
-				].filter(item => item.keyword !== keyword)
-				
-				this.suggestions = mockSuggestions
+				// The backend currently exposes search results only; do not fabricate suggestions.
+				this.suggestions = []
 			} catch (error) {
 				console.error('加载搜索建议失败:', error)
+				this.suggestions = []
 			}
 		},
 
@@ -271,29 +262,8 @@ export default {
 				}
 			} catch (error) {
 				console.error('搜索失败:', error)
-				// 使用模拟数据
-				this.searchResults = [
-					{
-						id: 1,
-						name: '珍珠奶茶',
-						description: '经典珍珠奶茶，香甜可口',
-						image: '/static/product1.jpg',
-						price: 18.00,
-						memberPrice: 16.00,
-						sales: 999,
-						tags: ['热销', '经典']
-					},
-					{
-						id: 2,
-						name: '芝士奶盖珍珠奶茶',
-						description: '浓郁芝士配珍珠，层次丰富',
-						image: '/static/product2.jpg',
-						price: 22.00,
-						memberPrice: 20.00,
-						sales: 888,
-						tags: ['新品', '芝士']
-					}
-				].filter(item => item.name.includes(keyword))
+				this.searchResults = []
+				uni.showToast({ title: error.message || '搜索失败', icon: 'none' })
 			} finally {
 				this.searching = false
 			}

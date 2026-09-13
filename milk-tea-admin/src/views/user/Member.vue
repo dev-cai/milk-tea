@@ -471,6 +471,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
+import { getOrderList } from '@/api/order'
 
 // 数据定义
 const loading = ref(false)
@@ -812,49 +813,12 @@ const loadOrderHistory = async () => {
   
   orderHistoryLoading.value = true
   try {
-    // 模拟订单历史数据
-    const mockOrders = [
-      {
-        id: 1,
-        orderNo: 'MT202411190001',
-        createTime: '2024-11-19 15:30:00',
-        products: [
-          { id: 1, name: '珍珠奶茶', quantity: 1 },
-          { id: 2, name: '芋泥奶茶', quantity: 1 }
-        ],
-        totalAmount: 28.50,
-        status: 4,
-        payMethod: 'wechat'
-      },
-      {
-        id: 2,
-        orderNo: 'MT202411180002',
-        createTime: '2024-11-18 14:20:00',
-        products: [
-          { id: 3, name: '红豆奶茶', quantity: 2 }
-        ],
-        totalAmount: 35.80,
-        status: 4,
-        payMethod: 'alipay'
-      },
-      {
-        id: 3,
-        orderNo: 'MT202411170001',
-        createTime: '2024-11-17 16:45:00',
-        products: [
-          { id: 1, name: '珍珠奶茶', quantity: 1 },
-          { id: 4, name: '柠檬茶', quantity: 1 }
-        ],
-        totalAmount: 42.00,
-        status: 4,
-        payMethod: 'wechat'
-      }
-    ]
-    
-    orderHistory.orders = mockOrders
-    orderHistory.total = mockOrders.length
-    orderHistory.totalAmount = mockOrders.reduce((sum, order) => sum + order.totalAmount, 0)
-    orderHistory.avgAmount = orderHistory.totalAmount / orderHistory.total
+    const res = await getOrderList({ ...orderHistoryQuery, userId: currentUser.value.id })
+    const page = res.data
+    orderHistory.orders = (page.records || []).map(order => ({ ...order, products: order.items || [], totalAmount: order.payAmount || 0, payMethod: order.payType }))
+    orderHistory.total = page.total || 0
+    orderHistory.totalAmount = orderHistory.orders.reduce((sum, order) => sum + Number(order.totalAmount || 0), 0)
+    orderHistory.avgAmount = orderHistory.total ? orderHistory.totalAmount / orderHistory.total : 0
     
   } catch (error) {
     ElMessage.error('加载订单历史失败')
@@ -986,10 +950,10 @@ const getOrderStatusTag = (status) => {
 
 const getPayMethodName = (method) => {
   const methodMap = {
-    'wechat': '微信支付',
-    'alipay': '支付宝',
-    'cash': '现金',
-    'card': '银行卡'
+    'wechat': '微信支付（开发测试）',
+    'alipay': '其他（历史订单）',
+    'cash': '其他（历史订单）',
+    'card': '其他（历史订单）'
   }
   return methodMap[method] || '未知'
 }

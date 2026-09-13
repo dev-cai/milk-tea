@@ -206,89 +206,51 @@ export default {
 	methods: {
 		// 初始化地区数据
 		initRegionData() {
-			// 这里应该加载真实的地区数据
-			// 暂时使用模拟数据
-			this.provinces = [
-				{ name: '广东省', code: '440000' },
-				{ name: '北京市', code: '110000' },
-				{ name: '上海市', code: '310000' }
-			]
+			this.provinces = regionData
 			this.updateCities()
 		},
 
 		// 更新城市数据
 		updateCities() {
 			const provinceIndex = this.pickerValue[0]
-			// 模拟城市数据
-			if (provinceIndex === 0) { // 广东省
-				this.cities = [
-					{ name: '深圳市', code: '440300' },
-					{ name: '广州市', code: '440100' },
-					{ name: '东莞市', code: '441900' }
-				]
-			} else {
-				this.cities = [
-					{ name: '市辖区', code: '000000' }
-				]
-			}
+			this.cities = this.provinces[provinceIndex]?.children || []
+			this.pickerValue[1] = Math.min(this.pickerValue[1], Math.max(this.cities.length - 1, 0))
 			this.updateDistricts()
 		},
 
 		// 更新区县数据
 		updateDistricts() {
 			const cityIndex = this.pickerValue[1]
-			// 模拟区县数据
-			if (this.pickerValue[0] === 0 && cityIndex === 0) { // 深圳市
-				this.districts = [
-					{ name: '南山区', code: '440305' },
-					{ name: '福田区', code: '440304' },
-					{ name: '罗湖区', code: '440303' }
-				]
-			} else {
-				this.districts = [
-					{ name: '市辖区', code: '000000' }
-				]
-			}
+			this.districts = this.cities[cityIndex]?.children || []
+			this.pickerValue[2] = Math.min(this.pickerValue[2], Math.max(this.districts.length - 1, 0))
 		},
 
 		// 加载地址信息（编辑模式）
 		async loadAddressInfo() {
 			try {
-				// 这里应该调用API获取地址详情
-				// 暂时使用模拟数据
-				const mockAddress = {
-					name: '张三',
-					phone: '13800138000',
-					province: '广东省',
-					city: '深圳市',
-					district: '南山区',
-					detail: '科技园南区腾讯大厦',
-					tag: 2,
-					isDefault: true
-				}
-				
-				this.formData = { ...mockAddress }
-				this.selectedRegion = [mockAddress.province, mockAddress.city, mockAddress.district]
+				const res = await api.user.getAddress(this.addressId)
+				const address = res.data
+				this.formData = { ...this.formData, ...address, isDefault: address.isDefault === 1 }
+				this.selectedRegion = [address.province, address.city, address.district]
+				const pi = this.provinces.findIndex(item => item.name === address.province)
+				this.pickerValue[0] = Math.max(pi, 0)
+				this.updateCities()
+				this.pickerValue[1] = Math.max(this.cities.findIndex(item => item.name === address.city), 0)
+				this.updateDistricts()
+				this.pickerValue[2] = Math.max(this.districts.findIndex(item => item.name === address.district), 0)
 			} catch (error) {
 				console.error('加载地址信息失败:', error)
+				uni.showToast({ title: error.message || '地址加载失败', icon: 'none' })
 			}
 		},
 
 		// 获取当前位置信息
 		getCurrentLocationInfo(lat, lng) {
-			// 这里应该调用地图API进行逆地理编码
-			// 暂时使用模拟数据
 			this.currentLocation = {
 				latitude: lat,
 				longitude: lng,
-				address: '广东省深圳市南山区科技园南区'
+				address: `纬度 ${Number(lat).toFixed(6)}，经度 ${Number(lng).toFixed(6)}`
 			}
-			
-			// 自动填充地址信息
-			this.selectedRegion = ['广东省', '深圳市', '南山区']
-			this.formData.province = '广东省'
-			this.formData.city = '深圳市'
-			this.formData.district = '南山区'
 		},
 
 		// 刷新位置
@@ -416,14 +378,7 @@ export default {
 				}, 1500)
 			} catch (error) {
 				console.error('保存地址失败:', error)
-				// 模拟保存成功
-				uni.showToast({
-					title: '保存成功',
-					icon: 'success'
-				})
-				setTimeout(() => {
-					uni.navigateBack()
-				}, 1500)
+				uni.showToast({ title: error.message || '保存失败', icon: 'none' })
 			} finally {
 				uni.hideLoading()
 			}

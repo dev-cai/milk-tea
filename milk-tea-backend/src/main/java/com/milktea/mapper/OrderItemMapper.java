@@ -6,6 +6,7 @@ import org.apache.ibatis.annotations.Mapper;
 import org.apache.ibatis.annotations.Select;
 
 import java.util.List;
+import java.util.Map;
 
 /**
  * 订单项Mapper
@@ -26,4 +27,11 @@ public interface OrderItemMapper extends BaseMapper<OrderItem> {
             "AND o.deleted = 0 " +
             "ORDER BY oi.create_time DESC")
     List<Long> selectPurchasedProductIdsByUserId(Long userId);
+
+    @Select("SELECT oi.product_id AS productId, p.category_id AS categoryId, SUM(oi.quantity) AS quantity, " +
+            "SUM(oi.quantity * oi.price) AS amount, MAX(o.create_time) AS lastBuy " +
+            "FROM order_item oi JOIN orders o ON o.id = oi.order_id JOIN product p ON p.id = oi.product_id " +
+            "WHERE o.user_id = #{userId} AND o.status IN (3,4) AND o.deleted = 0 " +
+            "GROUP BY oi.product_id, p.category_id")
+    List<Map<String, Object>> selectPurchaseStatsByUserId(Long userId);
 }

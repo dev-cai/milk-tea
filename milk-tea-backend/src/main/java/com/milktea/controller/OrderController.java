@@ -6,6 +6,7 @@ import com.milktea.dto.OrderCreateRequest;
 import com.milktea.entity.Order;
 import com.milktea.service.OrderService;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.Valid;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
 
@@ -30,7 +31,8 @@ public class OrderController {
      * 创建订单
      */
     @PostMapping("/create")
-    public Result<Map<String, Object>> createOrder(@RequestBody OrderCreateRequest request) {
+    public Result<Map<String, Object>> createOrder(@Valid @RequestBody OrderCreateRequest request, HttpServletRequest servletRequest) {
+        request.setUserId(verifyUser(request.getUserId(), servletRequest));
         return orderService.createOrder(request);
     }
     

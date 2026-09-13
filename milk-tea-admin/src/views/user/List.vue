@@ -272,13 +272,7 @@ const handleView = async (row) => {
     lastLoginTime: row.lastLoginTime || '从未登录'
   }
   
-  // 设置模拟统计数据
-  userStats.value = {
-    totalOrders: Math.floor(Math.random() * 50) + 5,
-    totalAmount: (Math.random() * 1000 + 100).toFixed(2),
-    avgAmount: (Math.random() * 50 + 20).toFixed(2),
-    lastOrderTime: '2024-11-19 15:20:00'
-  }
+  userStats.value = { totalOrders: 0, totalAmount: '0.00', avgAmount: '0.00', lastOrderTime: '暂无' }
   
   console.log('用户详情数据:', userDetail.value)
   console.log('用户统计数据:', userStats.value)
@@ -302,7 +296,7 @@ const handleView = async (row) => {
       console.log('从API获取到用户统计:', statsRes.data)
     }
   } catch (error) {
-    console.log('API调用失败，继续使用模拟数据:', error.message)
+    console.error('用户详情或统计接口调用失败:', error.message)
   }
 }
 

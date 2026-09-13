@@ -7,6 +7,10 @@ import com.milktea.entity.User;
 import com.milktea.exception.BusinessException;
 import com.milktea.mapper.PointsHistoryMapper;
 import com.milktea.mapper.UserMapper;
+import com.milktea.mapper.PointsProductMapper;
+import com.milktea.mapper.CheckinRecordMapper;
+import com.milktea.entity.CheckinRecord;
+import com.milktea.entity.PointsProduct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,10 +29,14 @@ public class PointsService {
     
     private final PointsHistoryMapper pointsHistoryMapper;
     private final UserMapper userMapper;
+    private final PointsProductMapper pointsProductMapper;
+    private final CheckinRecordMapper checkinRecordMapper;
     
-    public PointsService(PointsHistoryMapper pointsHistoryMapper, UserMapper userMapper) {
+    public PointsService(PointsHistoryMapper pointsHistoryMapper, UserMapper userMapper, PointsProductMapper pointsProductMapper, CheckinRecordMapper checkinRecordMapper) {
         this.pointsHistoryMapper = pointsHistoryMapper;
         this.userMapper = userMapper;
+        this.pointsProductMapper = pointsProductMapper;
+        this.checkinRecordMapper = checkinRecordMapper;
     }
     
     /**
@@ -78,17 +86,12 @@ public class PointsService {
             throw new BusinessException("用户不存在");
         }
         
-        if (user.getPoints() == null || user.getPoints() < points) {
-            throw new BusinessException("积分不足");
-        }
-        
-        // 更新用户积分
-        user.setPoints(user.getPoints() - points);
-        
-        // 根据积分更新会员等级
+        if (points == null || points <= 0 || userMapper.deductPointsIfEnough(userId, points) != 1) throw new BusinessException("积分不足");
+        user = userMapper.selectById(userId);
         updateMemberLevel(user);
-        
-        userMapper.updateById(user);
+        com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<User> levelUpdate = new com.baomidou.mybatisplus.core.conditions.update.LambdaUpdateWrapper<>();
+        levelUpdate.eq(User::getId, userId).set(User::getMemberLevel, user.getMemberLevel());
+        userMapper.update(null, levelUpdate);
         
         // 记录积分历史
         PointsHistory history = new PointsHistory();
@@ -125,21 +128,27 @@ public class PointsService {
         return new com.milktea.common.PageResult<>(historyList, total, (long) safePage, (long) safeSize);
     }
     
-    /**
-     * 获取积分商品列表（暂时返回空列表）
-     */
     public com.milktea.common.PageResult<com.milktea.entity.PointsProduct> getProducts(Integer page, Integer size) {
-        return new com.milktea.common.PageResult<>(new java.util.ArrayList<>(), 0L, (long) page, (long) size);
+        int safePage = page == null ? 1 : Math.max(1, page);
+        int safeSize = size == null ? 10 : Math.min(100, Math.max(1, size));
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<PointsProduct> p =
+                new com.baomidou.mybatisplus.extension.plugins.pagination.Page<>(safePage, safeSize);
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<PointsProduct> wrapper =
+                new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        wrapper.eq(PointsProduct::getStatus, 1).orderByAsc(PointsProduct::getSort).orderByDesc(PointsProduct::getCreateTime);
+        com.baomidou.mybatisplus.extension.plugins.pagination.Page<PointsProduct> result = pointsProductMapper.selectPage(p, wrapper);
+        return new com.milktea.common.PageResult<>(result.getRecords(), result.getTotal(), result.getCurrent(), result.getSize());
     }
     
-    /**
-     * 积分兑换（暂时简单实现）
-     */
     @Transactional
     public void exchange(Long userId, Long productId, Integer quantity) {
-        // 这里应该查询积分商品，扣除积分，创建兑换记录
-        // 暂时简单实现：扣除100积分
-        deductPoints(userId, 100 * quantity, "积分兑换商品");
+        if (quantity == null || quantity <= 0 || quantity > 20) throw new BusinessException("兑换数量不合法");
+        PointsProduct product = pointsProductMapper.selectById(productId);
+        if (product == null || product.getStatus() != 1 || product.getDeleted() != 0) throw new BusinessException("积分商品不存在或已下架");
+        if (product.getStock() == null || product.getStock() < quantity) throw new BusinessException("库存不足");
+        int total = product.getPoints() * quantity;
+        if (pointsProductMapper.decrementStockIfAvailable(productId, quantity) != 1) throw new BusinessException("库存不足");
+        deductPoints(userId, total, "积分兑换" + product.getName());
     }
     
     /**
@@ -147,11 +156,16 @@ public class PointsService {
      */
     @Transactional
     public void checkin(Long userId) {
-        // 检查今天是否已签到
         java.time.LocalDate today = java.time.LocalDate.now();
-        
-        // 这里应该查询签到记录表，判断是否已签到
-        // 暂时简单实现：直接添加积分
+        com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<CheckinRecord> query = new com.baomidou.mybatisplus.core.conditions.query.LambdaQueryWrapper<>();
+        query.eq(CheckinRecord::getUserId, userId).eq(CheckinRecord::getCheckinDate, today);
+        if (checkinRecordMapper.selectCount(query) > 0) throw new BusinessException("今天已经签到");
+        CheckinRecord record = new CheckinRecord();
+        record.setUserId(userId);
+        record.setCheckinDate(today);
+        record.setContinuousDays(1);
+        record.setPoints(10);
+        checkinRecordMapper.insert(record);
         addPoints(userId, 10, 2, "每日签到", null);
     }
     

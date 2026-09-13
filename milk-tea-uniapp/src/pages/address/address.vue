@@ -95,31 +95,8 @@ export default {
 				}
 			} catch (error) {
 				console.error('加载地址列表失败:', error)
-				// 使用模拟数据
-				this.addressList = [
-					{
-						id: 1,
-						name: '张三',
-						phone: '13800138000',
-						province: '广东省',
-						city: '深圳市',
-						district: '南山区',
-						detail: '科技园南区腾讯大厦',
-						tag: 2, // 公司
-						isDefault: 1
-					},
-					{
-						id: 2,
-						name: '张三',
-						phone: '13800138000',
-						province: '广东省',
-						city: '深圳市',
-						district: '福田区',
-						detail: '华强北商业区',
-						tag: 1, // 家
-						isDefault: 0
-					}
-				]
+				this.addressList = []
+				uni.showToast({ title: error.message || '地址加载失败', icon: 'none' })
 			}
 		},
 
@@ -167,12 +144,7 @@ export default {
 							})
 						} catch (error) {
 							console.error('删除地址失败:', error)
-							// 模拟删除成功
-							this.addressList.splice(index, 1)
-							uni.showToast({
-								title: '删除成功',
-								icon: 'success'
-							})
+							uni.showToast({ title: error.message || '删除失败', icon: 'none' })
 						}
 					}
 				}
@@ -195,14 +167,7 @@ export default {
 				})
 			} catch (error) {
 				console.error('设置默认地址失败:', error)
-				// 模拟设置成功
-				this.addressList.forEach(item => {
-					item.isDefault = item.id === address.id ? 1 : 0
-				})
-				uni.showToast({
-					title: '设置成功',
-					icon: 'success'
-				})
+				uni.showToast({ title: error.message || '设置失败', icon: 'none' })
 			}
 		},
 

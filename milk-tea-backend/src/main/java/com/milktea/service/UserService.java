@@ -11,6 +11,7 @@ import com.milktea.mapper.UserAddressMapper;
 import com.milktea.mapper.UserMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
+import org.springframework.security.crypto.password.PasswordEncoder;
 
 import java.util.List;
 
@@ -25,11 +26,14 @@ public class UserService {
     private final UserMapper userMapper;
     private final UserAddressMapper userAddressMapper;
     private final LoginHistoryMapper loginHistoryMapper;
+    private final PasswordEncoder passwordEncoder;
     
-    public UserService(UserMapper userMapper, UserAddressMapper userAddressMapper, LoginHistoryMapper loginHistoryMapper) {
+    public UserService(UserMapper userMapper, UserAddressMapper userAddressMapper, LoginHistoryMapper loginHistoryMapper,
+                       PasswordEncoder passwordEncoder) {
         this.userMapper = userMapper;
         this.userAddressMapper = userAddressMapper;
         this.loginHistoryMapper = loginHistoryMapper;
+        this.passwordEncoder = passwordEncoder;
     }
     
     /**
@@ -117,6 +121,13 @@ public class UserService {
         
         List<UserAddress> addresses = userAddressMapper.selectList(queryWrapper);
         return Result.success("获取成功", addresses);
+    }
+
+    public Result<UserAddress> getUserAddress(Long addressId, Long userId) {
+        UserAddress address = userAddressMapper.selectById(addressId);
+        if (address == null) throw new BusinessException("地址不存在");
+        if (!userId.equals(address.getUserId())) throw new BusinessException("无权查看此地址");
+        return Result.success("获取成功", address);
     }
     
     /**
@@ -238,15 +249,15 @@ public class UserService {
             throw new BusinessException("用户不存在");
         }
         
-        // 验证旧密码（需要MD5加密后比较）
-        String encryptedOldPassword = com.milktea.utils.MD5Utils.encode(oldPassword);
-        if (!encryptedOldPassword.equals(user.getPassword())) {
+        boolean oldPasswordMatches = user.getPassword() != null && user.getPassword().startsWith("$2")
+                ? passwordEncoder.matches(oldPassword, user.getPassword())
+                : com.milktea.utils.MD5Utils.matches(oldPassword, user.getPassword());
+        if (!oldPasswordMatches) {
             throw new BusinessException("旧密码错误");
         }
         
-        // 设置新密码（MD5加密）
-        String encryptedNewPassword = com.milktea.utils.MD5Utils.encode(newPassword);
-        user.setPassword(encryptedNewPassword);
+        user.setPassword(passwordEncoder.encode(newPassword));
+        user.setTokenVersion((user.getTokenVersion() == null ? 0 : user.getTokenVersion()) + 1);
         userMapper.updateById(user);
         
         return Result.success("密码修改成功");

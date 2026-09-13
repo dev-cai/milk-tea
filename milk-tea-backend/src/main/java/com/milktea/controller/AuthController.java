@@ -72,4 +72,9 @@ public class AuthController {
         
         return authService.phoneLogin(phone, code, inviteCode);
     }
+
+    @PostMapping("/refresh")
+    public Result<Map<String, Object>> refresh(@RequestBody Map<String, String> request) {
+        return authService.refresh(request.get("refreshToken"));
+    }
 }

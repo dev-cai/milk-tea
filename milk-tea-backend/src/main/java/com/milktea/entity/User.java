@@ -50,6 +50,9 @@ public class User {
     private Integer userType;
     
     private Integer status;
+
+    /** Incremented on password/status-sensitive changes to invalidate issued tokens. */
+    private Integer tokenVersion;
     
     @TableLogic
     private Integer deleted;

@@ -240,9 +240,11 @@ export default {
 					})
 				})
 
-				// 获取用户信息
+				// getUserProfile is the supported consent flow on current WeChat clients.
 				const userInfoRes = await new Promise((resolve, reject) => {
-					uni.getUserInfo({
+					const method = typeof uni.getUserProfile === 'function' ? 'getUserProfile' : 'getUserInfo'
+					uni[method]({
+						desc: '用于完善会员资料',
 						provider: 'weixin',
 						success: resolve,
 						fail: reject

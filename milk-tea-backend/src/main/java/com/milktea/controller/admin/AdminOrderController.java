@@ -35,8 +35,9 @@ public class AdminOrderController {
             @RequestParam(required = false) Integer status,
             @RequestParam(required = false) String orderNo,
             @RequestParam(required = false) String startDate,
-            @RequestParam(required = false) String endDate) {
-        return adminService.getOrderPage(page, size, status, orderNo, startDate, endDate);
+            @RequestParam(required = false) String endDate,
+            @RequestParam(required = false) Long userId) {
+        return adminService.getOrderPage(page, size, status, orderNo, startDate, endDate, userId);
     }
     
     /**

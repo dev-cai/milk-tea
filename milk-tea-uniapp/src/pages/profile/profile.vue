@@ -293,13 +293,10 @@ export default {
 		async uploadAvatar(filePath) {
 			try {
 				uni.showLoading({ title: '上传中...' })
-				
-				// 这里应该调用上传API
-				// const res = await api.user.uploadAvatar(filePath)
-				// this.userInfo.avatar = res.data.url
-				
-				// 模拟上传成功
-				this.userInfo.avatar = filePath
+				const res = await api.file.uploadAvatar(filePath)
+				const avatarUrl = res.data.url
+				await api.user.updateInfo({ avatar: avatarUrl })
+				this.userInfo = { ...this.userInfo, avatar: avatarUrl }
 				uni.setStorageSync('userInfo', this.userInfo)
 				
 				uni.showToast({

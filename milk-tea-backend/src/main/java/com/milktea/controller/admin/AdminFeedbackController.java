@@ -13,7 +13,7 @@ import java.util.Map;
  * 管理端反馈控制器
  */
 @RestController
-@RequestMapping("/api/admin/feedback")
+@RequestMapping("/admin/feedback")
 @RequiredArgsConstructor
 public class AdminFeedbackController {
     

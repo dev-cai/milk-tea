@@ -101,7 +101,7 @@ export function getAftersaleStatistics() {
 // 获取反馈列表
 export function getFeedbackList(params) {
   return request({
-    url: '/api/admin/feedback/list',
+    url: '/admin/feedback/list',
     method: 'get',
     params
   })
@@ -110,7 +110,7 @@ export function getFeedbackList(params) {
 // 回复反馈
 export function replyFeedback(data) {
   return request({
-    url: '/api/admin/feedback/reply',
+    url: '/admin/feedback/reply',
     method: 'post',
     data
   })
@@ -119,7 +119,7 @@ export function replyFeedback(data) {
 // 获取反馈详情
 export function getFeedbackDetail(id) {
   return request({
-    url: `/api/admin/feedback/${id}`,
+    url: `/admin/feedback/${id}`,
     method: 'get'
   })
 }
@@ -127,7 +127,7 @@ export function getFeedbackDetail(id) {
 // 更新反馈状态
 export function updateFeedbackStatus(data) {
   return request({
-    url: '/api/admin/feedback/status',
+    url: '/admin/feedback/status',
     method: 'put',
     data
   })

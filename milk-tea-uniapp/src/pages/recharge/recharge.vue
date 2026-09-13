@@ -139,7 +139,6 @@
 </template>
 
 <script>
-import api from '@/utils/api.js'
 import { formatPrice } from '@/utils/common.js'
 
 export default {
@@ -158,9 +157,7 @@ export default {
 				{ id: 6, amount: 1000, bonus: 300, discount: '送300元', recommended: false }
 			],
 			paymentMethods: [
-				{ id: 'wechat', name: '微信支付', desc: '推荐使用', icon: '💚' },
-				{ id: 'alipay', name: '支付宝', desc: '安全快捷', icon: '💙' },
-				{ id: 'balance', name: '银行卡', desc: '储蓄卡支付', icon: '💳' }
+				{ id: 'wechat', name: '微信支付（开发测试）', desc: '仅用于测试', icon: '💚' }
 			],
 			discountRules: [
 				{ icon: '🎁', title: '充值送好礼', desc: '充值满100元送15元，充值越多送越多' },
@@ -287,64 +284,11 @@ export default {
 		
 		// 处理充值
 		async processRecharge(amount, bonus) {
-			try {
-				uni.showLoading({ title: '处理中...' })
-				
-				// 调用充值接口
-				const res = await api.payment.recharge({
-					userId: this.userInfo.id,
-					amount: amount,
-					bonus: bonus,
-					paymentMethod: this.selectedPayment
-				})
-				
-				uni.hideLoading()
-				
-				if (res.code === 200) {
-					// 充值成功
-					uni.showToast({
-						title: '充值成功',
-						icon: 'success'
-					})
-					
-					// 更新用户余额
-					this.userInfo.balance = (this.userInfo.balance || 0) + amount + bonus
-					uni.setStorageSync('userInfo', this.userInfo)
-					
-					setTimeout(() => {
-						uni.navigateBack()
-					}, 1500)
-				} else {
-					uni.showToast({
-						title: res.message || '充值失败',
-						icon: 'none'
-					})
-				}
-			} catch (error) {
-				uni.hideLoading()
-				console.error('充值失败:', error)
-				
-				// 模拟充值成功（开发测试用）
-				uni.showModal({
-					title: '提示',
-					content: '当前为测试环境，是否模拟充值成功？',
-					success: (res) => {
-						if (res.confirm) {
-							this.userInfo.balance = (this.userInfo.balance || 0) + amount + bonus
-							uni.setStorageSync('userInfo', this.userInfo)
-							
-							uni.showToast({
-								title: '充值成功（测试）',
-								icon: 'success'
-							})
-							
-							setTimeout(() => {
-								uni.navigateBack()
-							}, 1500)
-						}
-					}
-				})
-			}
+			uni.showModal({
+				title: '微信沙箱充值',
+				content: '当前仅接入订单微信支付开发测试流程，余额充值需配置商户号、证书和支付回调后开放。',
+				showCancel: false
+			})
 		}
 	}
 }

@@ -403,47 +403,6 @@ const handleQuery = async () => {
   }
 }
 
-// 原来的模拟数据代码已删除
-const handleQueryOld = async () => {
-  loading.value = true
-  try {
-    // 这是旧的模拟数据代码，已被上面的真实API替换
-    activities.value = [
-      {
-        id: 1,
-        name: '双11狂欢节',
-        type: 'discount',
-        description: '全场满50减10，满100减25',
-        rules: '活动期间，单笔订单满50元减10元，满100元减25元',
-        banner: '/images/activity1.jpg',
-        startTime: '2024-11-11 00:00:00',
-        endTime: '2024-11-11 23:59:59',
-        participants: 580,
-        revenue: 15600,
-        status: 1
-      },
-      {
-        id: 2,
-        name: '限时秒杀',
-        type: 'seckill',
-        description: '每日10点限量秒杀',
-        rules: '每日10:00开始，限量100份，先到先得',
-        banner: '/images/activity2.jpg',
-        startTime: '2024-11-10 10:00:00',
-        endTime: '2024-11-20 10:30:00',
-        participants: 320,
-        revenue: 8900,
-        status: 1
-      }
-    ]
-    total.value = 25
-  } catch (error) {
-    console.error('查询失败:', error)
-  } finally {
-    loading.value = false
-  }
-}
-
 // 重置查询
 const handleReset = () => {
   Object.assign(queryForm, {

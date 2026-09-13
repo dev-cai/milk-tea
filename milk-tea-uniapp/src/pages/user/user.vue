@@ -334,96 +334,18 @@ export default {
 		async uploadAvatar(filePath) {
 			try {
 				uni.showLoading({ title: '上传中...' })
-				
-				console.log('选择的图片路径:', filePath)
-				
-				const token = uni.getStorageSync('token')
-				if (!token) {
-					uni.hideLoading()
-					uni.showToast({
-						title: '请先登录',
-						icon: 'none'
-					})
-					return
-				}
-				
-				// 上传文件到服务器
-				uni.uploadFile({
-					url: 'http://localhost:8080/api/file/upload-avatar',
-					filePath: filePath,
-					name: 'file',
-					header: {
-						'Authorization': `Bearer ${token}`
-					},
-					success: async (uploadRes) => {
-						console.log('上传响应:', uploadRes)
-						
-						try {
-							const data = JSON.parse(uploadRes.data)
-							console.log('解析后的数据:', data)
-							
-							if (data.code === 200) {
-								const avatarUrl = data.data.url
-								console.log('头像URL:', avatarUrl)
-								
-								// 更新用户信息
-								const updateRes = await api.user.updateInfo({
-									id: this.userInfo.id,
-									avatar: avatarUrl
-								})
-								
-								if (updateRes.code === 200) {
-									// 更新本地数据 - 创建新对象触发响应式更新
-									const newUserInfo = {
-										...this.userInfo,
-										avatar: avatarUrl
-									}
-									this.userInfo = newUserInfo
-									uni.setStorageSync('userInfo', newUserInfo)
-									
-									console.log('头像更新成功，新的userInfo:', this.userInfo)
-									
-									uni.hideLoading()
-									uni.showToast({
-										title: '头像更新成功',
-										icon: 'success'
-									})
-									
-									// 延迟刷新页面确保显示
-									setTimeout(() => {
-										this.loadUserInfo()
-									}, 500)
-								} else {
-									throw new Error(updateRes.message || '更新用户信息失败')
-								}
-							} else {
-								throw new Error(data.message || '上传失败')
-							}
-						} catch (parseError) {
-							console.error('处理上传结果失败:', parseError)
-							uni.hideLoading()
-							uni.showToast({
-								title: '上传失败: ' + parseError.message,
-								icon: 'none'
-							})
-						}
-					},
-					fail: (error) => {
-						console.error('上传文件失败:', error)
-						uni.hideLoading()
-						uni.showToast({
-							title: '上传失败',
-							icon: 'none'
-						})
-					}
-				})
+				const res = await api.file.uploadAvatar(filePath)
+				const avatarUrl = res.data.url
+				await api.user.updateInfo({ avatar: avatarUrl })
+				this.userInfo = { ...this.userInfo, avatar: avatarUrl }
+				uni.setStorageSync('userInfo', this.userInfo)
+				uni.showToast({ title: '头像更新成功', icon: 'success' })
+				setTimeout(() => this.loadUserInfo(), 500)
 			} catch (error) {
 				console.error('上传头像失败:', error)
+				uni.showToast({ title: error.message || '上传失败', icon: 'none' })
+			} finally {
 				uni.hideLoading()
-				uni.showToast({
-					title: '上传失败',
-					icon: 'none'
-				})
 			}
 		},
 

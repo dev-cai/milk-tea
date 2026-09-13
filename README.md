@@ -47,6 +47,9 @@ milk-tea/
 ```bash
 mysql -u root -p -e "CREATE DATABASE milk_tea CHARACTER SET utf8mb4 COLLATE utf8mb4_unicode_ci;"
 mysql -u root -p milk_tea < database/init.sql
+# `init.sql` already includes the production fields, indexes and activity table.
+# Existing installations that were initialized before this script can apply:
+# mysql -u root -p milk_tea < database/migrations/001_optimization.sql
 ```
 
 ### 3. 配置后端
@@ -76,7 +79,7 @@ npm install
 npm run dev
 ```
 
-默认访问地址：`http://localhost:5173`
+默认访问地址：`http://localhost:3000`
 
 ### 5. 启动用户端
 
@@ -117,7 +120,9 @@ cd milk-tea-uniapp && npm run build:h5
 
 ## 说明
 
-项目中的支付、短信验证码、部分打印和地图能力包含测试环境实现，生产部署前需要接入真实服务并补充密钥管理、支付回调、库存锁定和自动化集成测试。仓库中的 `milk-tea.apk` 仅用于开发验证。
+项目当前仅保留微信支付沙箱入口；短信验证码、部分打印和地图能力包含测试环境实现。生产部署前需要配置微信支付商户号、API 证书和支付回调，并补充密钥管理、库存锁定和自动化集成测试。仓库中的 `milk-tea.apk` 仅用于开发验证。
+
+后端认证接口返回短期 `token` 和长期 `refreshToken`，可调用 `POST /api/auth/refresh` 换取新的 access token。生产环境必须设置至少 32 字节的 `JWT_SECRET`，并通过 `VITE_API_BASE_URL` 配置用户端 HTTPS API 地址。
 
 ## 作者
 

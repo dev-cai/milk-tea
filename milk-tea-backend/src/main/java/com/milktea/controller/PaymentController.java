@@ -7,6 +7,7 @@ import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
 import java.util.Map;
+import jakarta.servlet.http.HttpServletRequest;
 
 /**
  * 支付控制器
@@ -27,44 +28,20 @@ public class PaymentController {
      * 微信支付
      */
     @PostMapping("/wx-pay")
-    public Result<Map<String, Object>> wxPay(@RequestBody Map<String, Object> params) {
+    public Result<Map<String, Object>> wxPay(@RequestBody Map<String, Object> params, HttpServletRequest request) {
         log.info("微信支付请求: {}", params);
         
         Long orderId = Long.valueOf(params.get("orderId").toString());
         String orderNo = params.get("orderNo").toString();
         BigDecimal amount = new BigDecimal(params.get("amount").toString());
-        Long userId = Long.valueOf(params.get("userId").toString());
+        Long userId = authenticatedUser(request);
         
         return paymentService.wxPay(orderId, orderNo, amount, userId);
     }
     
-    /**
-     * 支付宝支付
-     */
-    @PostMapping("/alipay")
-    public Result<Map<String, Object>> alipay(@RequestBody Map<String, Object> params) {
-        log.info("支付宝支付请求: {}", params);
-        
-        Long orderId = Long.valueOf(params.get("orderId").toString());
-        String orderNo = params.get("orderNo").toString();
-        BigDecimal amount = new BigDecimal(params.get("amount").toString());
-        Long userId = Long.valueOf(params.get("userId").toString());
-        
-        return paymentService.alipay(orderId, orderNo, amount, userId);
-    }
-    
-    /**
-     * 余额支付
-     */
-    @PostMapping("/balance-pay")
-    public Result<Map<String, Object>> balancePay(@RequestBody Map<String, Object> params) {
-        log.info("余额支付请求: {}", params);
-        
-        Long orderId = Long.valueOf(params.get("orderId").toString());
-        String orderNo = params.get("orderNo").toString();
-        BigDecimal amount = new BigDecimal(params.get("amount").toString());
-        Long userId = Long.valueOf(params.get("userId").toString());
-        
-        return paymentService.balancePay(orderId, orderNo, amount, userId);
+    private Long authenticatedUser(HttpServletRequest request) {
+        Object id = request.getAttribute("authenticatedUserId");
+        if (id == null) throw new org.springframework.security.access.AccessDeniedException("请先登录");
+        return Long.valueOf(id.toString());
     }
 }

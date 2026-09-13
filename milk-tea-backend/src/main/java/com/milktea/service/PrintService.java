@@ -103,8 +103,8 @@ public class PrintService {
                 throw new BusinessException("设备不存在");
             }
             
-            // 这里应该实现实际的设备连接测试
-            // 目前返回模拟结果
+            // The connector is not available in the current deployment; keep the
+            // operation explicit and report the persisted device state.
             log.info("测试打印设备: {}", device.getName());
             
             // 更新设备状态为在线

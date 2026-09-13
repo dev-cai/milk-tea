@@ -3,9 +3,11 @@ package com.milktea.controller;
 import com.milktea.common.Result;
 import com.milktea.entity.User;
 import com.milktea.mapper.UserMapper;
+import com.milktea.service.InviteService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.*;
 
@@ -20,13 +22,15 @@ import java.util.*;
 public class MemberController {
     
     private final UserMapper userMapper;
+    private final InviteService inviteService;
     
     /**
      * 获取会员信息
      */
     @GetMapping("/info")
-    public Result<Map<String, Object>> getInfo(@RequestParam Long userId) {
-        User user = userMapper.selectById(userId);
+    public Result<Map<String, Object>> getInfo(@RequestParam(required = false) Long userId, HttpServletRequest request) {
+        Long currentUserId = currentUser(userId, request);
+        User user = userMapper.selectById(currentUserId);
         if (user == null) {
             return Result.error("用户不存在");
         }
@@ -80,8 +84,9 @@ public class MemberController {
      * 获取会员统计数据
      */
     @GetMapping("/stats")
-    public Result<Map<String, Object>> getStats(@RequestParam Long userId) {
-        User user = userMapper.selectById(userId);
+    public Result<Map<String, Object>> getStats(@RequestParam(required = false) Long userId, HttpServletRequest request) {
+        Long currentUserId = currentUser(userId, request);
+        User user = userMapper.selectById(currentUserId);
         if (user == null) {
             return Result.error("用户不存在");
         }
@@ -90,7 +95,7 @@ public class MemberController {
         
         // 查询订单统计
         try {
-            Map<String, Object> orderStats = userMapper.selectOrderStats(userId);
+            Map<String, Object> orderStats = userMapper.selectOrderStats(currentUserId);
             if (orderStats != null) {
                 stats.put("totalOrders", orderStats.get("totalOrders"));
                 stats.put("totalAmount", orderStats.get("totalAmount"));
@@ -98,6 +103,8 @@ public class MemberController {
                 stats.put("totalOrders", 0);
                 stats.put("totalAmount", 0.0);
             }
+        } catch (org.springframework.security.access.AccessDeniedException e) {
+            throw e;
         } catch (Exception e) {
             log.error("查询订单统计失败", e);
             stats.put("totalOrders", 0);
@@ -108,7 +115,7 @@ public class MemberController {
         
         // 查询邀请统计
         try {
-            Map<String, Object> inviteStats = userMapper.selectInviteStats(userId);
+            Map<String, Object> inviteStats = userMapper.selectInviteStats(currentUserId);
             if (inviteStats != null) {
                 stats.put("inviteCount", inviteStats.get("inviteCount"));
             } else {
@@ -126,17 +133,16 @@ public class MemberController {
      * 邀请好友
      */
     @PostMapping("/invite")
-    public Result<Map<String, Object>> invite(@RequestBody Map<String, Object> request) {
+    public Result<Map<String, Object>> invite(@RequestBody Map<String, Object> request, HttpServletRequest servletRequest) {
         try {
-            Long userId = Long.valueOf(request.get("userId").toString());
+            Long userId = currentUser(request.get("userId") == null ? null : Long.valueOf(request.get("userId").toString()), servletRequest);
             
             User user = userMapper.selectById(userId);
             if (user == null) {
                 return Result.error("用户不存在");
             }
             
-            // 生成邀请码（简化实现）
-            String inviteCode = "INV" + userId + System.currentTimeMillis();
+            String inviteCode = inviteService.getInviteCode(userId).getData();
             
             Map<String, Object> result = new HashMap<>();
             result.put("inviteCode", inviteCode);
@@ -160,6 +166,16 @@ public class MemberController {
             case 2: return "钻石会员";
             default: return "普通会员";
         }
+    }
+
+    private Long currentUser(Long suppliedUserId, HttpServletRequest request) {
+        Object value = request.getAttribute("authenticatedUserId");
+        if (value == null) throw new org.springframework.security.access.AccessDeniedException("未登录");
+        Long current = Long.valueOf(value.toString());
+        if (suppliedUserId != null && !current.equals(suppliedUserId)) {
+            throw new org.springframework.security.access.AccessDeniedException("无权操作其他用户数据");
+        }
+        return current;
     }
     
     /**

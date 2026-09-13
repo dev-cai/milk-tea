@@ -13,6 +13,8 @@ import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
+import com.milktea.mapper.UserMapper;
+import com.milktea.entity.User;
 
 import java.io.IOException;
 import java.util.Collections;
@@ -26,9 +28,11 @@ import java.util.Collections;
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
     
     private final JwtUtils jwtUtils;
+    private final UserMapper userMapper;
     
-    public JwtAuthenticationFilter(JwtUtils jwtUtils) {
+    public JwtAuthenticationFilter(JwtUtils jwtUtils, UserMapper userMapper) {
         this.jwtUtils = jwtUtils;
+        this.userMapper = userMapper;
     }
     
     @Override
@@ -37,11 +41,18 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         
         String token = getTokenFromRequest(request);
         
-        if (StringUtils.hasText(token) && jwtUtils.validateToken(token)) {
+        if (StringUtils.hasText(token) && jwtUtils.validateToken(token) && !jwtUtils.isRefreshToken(token)) {
             try {
                 String username = jwtUtils.getUsernameFromToken(token);
                 String userType = jwtUtils.getUserTypeFromToken(token);
                 Long userId = jwtUtils.getUserIdFromToken(token);
+                User user = userMapper.selectById(userId);
+                Integer tokenVersion = jwtUtils.getTokenVersionFromToken(token);
+                if (user == null || user.getStatus() == null || user.getStatus() == 0
+                        || (tokenVersion != null && !java.util.Objects.equals(tokenVersion, user.getTokenVersion() == null ? 0 : user.getTokenVersion()))) {
+                    filterChain.doFilter(request, response);
+                    return;
+                }
                 request.setAttribute("authenticatedUserId", userId);
                 
                 // 创建认证对象

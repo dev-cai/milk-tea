@@ -236,6 +236,7 @@
 					<text class="popup-title">选择支付方式</text>
 					<text class="close-btn" @click="showPaymentSheet = false">×</text>
 				</view>
+				<text class="payment-notice">微信支付开发测试流程，仅用于测试</text>
 				<view class="payment-list">
 					<view class="payment-item" 
 						v-for="(method, index) in paymentMethods" 
@@ -308,9 +309,7 @@ export default {
 				}
 			],
 			paymentMethods: [
-				{ name: '微信支付', value: 'wechat' },
-				{ name: '余额支付', value: 'balance' },
-				{ name: '支付宝支付', value: 'alipay' }
+				{ name: '微信支付（开发测试）', value: 'wechat', icon: '💚' }
 			],
 			userInfo: {},
 			availableCoupons: []
@@ -325,7 +324,10 @@ export default {
 		// 商品金额
 		goodsAmount() {
 			return this.orderItems.reduce((total, item) => {
-				return total + (this.getCurrentPrice(item) * item.quantity)
+				// 展示原价，会员优惠单独列出；优惠券基数使用扣除会员优惠后的金额。
+				let price = Number(item.price || 0)
+				if (item.toppings && item.toppings.length > 0) price += item.toppings.length * 3
+				return total + (price * Number(item.quantity || 0))
 			}, 0)
 		},
 
@@ -337,13 +339,16 @@ export default {
 		// 优惠券折扣
 		couponDiscount() {
 			if (!this.selectedCoupon) return 0
-			
+			const couponBaseAmount = this.couponBaseAmount
+			const discount = Number(this.selectedCoupon.discount || 0)
 			if (this.selectedCoupon.type === 1) {
 				// 满减券
-				return this.goodsAmount >= this.selectedCoupon.minAmount ? this.selectedCoupon.discount : 0
+				return couponBaseAmount >= Number(this.selectedCoupon.minAmount || 0) ? Math.min(discount, couponBaseAmount) : 0
 			} else if (this.selectedCoupon.type === 2) {
-				// 折扣券
-				return this.goodsAmount * (1 - this.selectedCoupon.discount / 10)
+				// 折扣券：discount=0.8 表示8折，优惠金额为原价的20%。
+				const rate = discount > 1 ? discount / 10 : discount
+				return couponBaseAmount >= Number(this.selectedCoupon.minAmount || 0)
+					? couponBaseAmount * (1 - rate) : 0
 			}
 			
 			return 0
@@ -361,9 +366,14 @@ export default {
 			}, 0)
 		},
 
+		// 会员价后的实际商品金额，作为优惠券门槛和折扣计算基数。
+		couponBaseAmount() {
+			return Math.max(0, this.goodsAmount - this.memberDiscount)
+		},
+
 		// 总金额
 		totalAmount() {
-			return Math.max(0, this.goodsAmount + this.deliveryFee - this.couponDiscount - this.memberDiscount)
+			return Math.max(0, this.couponBaseAmount + this.deliveryFee - this.couponDiscount)
 		},
 
 		// 预计送达时间
@@ -386,6 +396,13 @@ export default {
 		this.getUserLocation()
 		this.loadDefaultAddress()
 		this.loadAvailableCoupons()
+	},
+	onShow() {
+		const selectedCoupon = uni.getStorageSync('selectedCoupon')
+		if (selectedCoupon) {
+			this.selectedCoupon = selectedCoupon
+			uni.removeStorageSync('selectedCoupon')
+		}
 	},
 	methods: {
 		// 加载用户信息
@@ -685,8 +702,9 @@ export default {
 						temperature: item.temperature || 2,
 						toppings: Array.isArray(item.toppings) ? item.toppings.join(',') : ''
 					})),
+					userCouponId: this.selectedCoupon ? this.selectedCoupon.id : null,
 					remark: this.orderRemark || '',
-					payType: paymentMethod === 'wechat' ? 1 : (paymentMethod === 'alipay' ? 2 : 3)
+					payType: 1
 				}
 
 				console.log('提交订单数据:', orderData)
@@ -730,71 +748,20 @@ export default {
 			try {
 				console.log('开始处理支付，订单:', order, '支付方式:', paymentMethod)
 				
-				// 检查余额是否足够（余额支付时）
-				if (paymentMethod === 'balance') {
-					const currentBalance = this.userInfo.balance || 0
-					if (currentBalance < order.totalAmount) {
-						uni.showModal({
-							title: '余额不足',
-							content: `当前余额：¥${currentBalance.toFixed(2)}\n订单金额：¥${order.totalAmount}\n\n余额不足，是否前往充值？`,
-							success: (res) => {
-								if (res.confirm) {
-									uni.navigateTo({
-										url: '/pages/recharge/recharge'
-									})
-								}
-							}
-						})
-						return
-					}
-				}
-				
-				// 调用后端支付接口
-				let payRes
-				console.log('支付方式:', paymentMethod)
-				console.log('订单信息:', order)
-				
-				if (paymentMethod === 'wechat') {
-					// 微信支付（测试环境）
-					console.log('调用微信支付接口')
-					payRes = await api.payment.wxPay({
-						orderId: order.orderId,
-						orderNo: order.orderNo,
-						amount: order.totalAmount,
-						userId: this.userInfo.id
-					})
-				} else if (paymentMethod === 'balance') {
-					// 余额支付
-					console.log('调用余额支付接口')
-					payRes = await api.payment.balancePay({
-						orderId: order.orderId,
-						orderNo: order.orderNo,
-						amount: order.totalAmount,
-						userId: this.userInfo.id
-					})
-				} else if (paymentMethod === 'alipay') {
-					// 支付宝支付（测试环境）
-					console.log('调用支付宝支付接口')
-					payRes = await api.payment.alipay({
-						orderId: order.orderId,
-						orderNo: order.orderNo,
-						amount: order.totalAmount,
-						userId: this.userInfo.id
-					})
-				} else {
-					console.error('未知的支付方式:', paymentMethod)
-					uni.showToast({
-						title: '不支持的支付方式',
-						icon: 'none'
-					})
-					return
-				}
+				const payableAmount = Number(order.payAmount ?? order.actualAmount ?? order.totalAmount ?? 0)
+					console.log('调用微信支付开发测试接口', order)
+				const payRes = await api.payment.wxPay({
+					orderId: order.orderId,
+					orderNo: order.orderNo,
+					amount: payableAmount,
+					userId: this.userInfo.id
+				})
 				
 				console.log('支付接口返回:', payRes)
 				
 				if (payRes && payRes.code === 200) {
 					// 支付成功
-					this.paymentSuccess(order, paymentMethod)
+					this.paymentSuccess(order, 'wechat')
 				} else {
 					uni.showToast({
 						title: payRes?.message || '支付失败',
@@ -814,8 +781,7 @@ export default {
 		getPaymentMethodName(method) {
 			const names = {
 				'wechat': '微信支付',
-				'alipay': '支付宝',
-				'balance': '余额支付'
+				'wechat': '微信支付（开发测试）'
 			}
 			return names[method] || '未知'
 		},
@@ -1356,6 +1322,13 @@ export default {
 	display: flex;
 	flex-direction: column;
 	gap: 20rpx;
+}
+
+.payment-notice {
+	display: block;
+	margin: 12rpx 0 20rpx;
+	font-size: 24rpx;
+	color: #999;
 }
 
 .payment-item {

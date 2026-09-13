@@ -13,9 +13,14 @@ import com.milktea.mapper.ProductMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import java.util.concurrent.TimeUnit;
 
 import java.util.*;
 import java.util.stream.Collectors;
+import java.math.BigDecimal;
 
 /**
  * 商品服务类
@@ -28,11 +33,16 @@ public class ProductService {
     private final ProductMapper productMapper;
     private final CategoryMapper categoryMapper;
     private final OrderItemMapper orderItemMapper;
+    private final StringRedisTemplate redisTemplate;
+    private final ObjectMapper objectMapper;
     
-    public ProductService(ProductMapper productMapper, CategoryMapper categoryMapper, OrderItemMapper orderItemMapper) {
+    public ProductService(ProductMapper productMapper, CategoryMapper categoryMapper, OrderItemMapper orderItemMapper,
+                          StringRedisTemplate redisTemplate, ObjectMapper objectMapper) {
         this.productMapper = productMapper;
         this.categoryMapper = categoryMapper;
         this.orderItemMapper = orderItemMapper;
+        this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
     }
     
     /**
@@ -243,32 +253,50 @@ public class ProductService {
     public Result<List<Product>> getPersonalizedProducts(Long userId, Integer limit) {
         try {
             int safeLimit = normalizeLimit(limit);
+            String cacheKey = "recommend:user:" + userId + ":" + safeLimit;
+            try {
+                String cached = redisTemplate.opsForValue().get(cacheKey);
+                if (cached != null) return Result.success("获取成功", objectMapper.readValue(cached, new TypeReference<List<Product>>() {}));
+            } catch (Exception cacheError) {
+                log.debug("推荐缓存不可用，继续查询数据库", cacheError);
+            }
             // 1. 查询用户购买过的商品ID列表
-            List<Long> purchasedProductIds = orderItemMapper.selectPurchasedProductIdsByUserId(userId);
+            List<Map<String, Object>> purchaseStats = orderItemMapper.selectPurchaseStatsByUserId(userId);
+            List<Long> purchasedProductIds = purchaseStats == null ? Collections.emptyList() : purchaseStats.stream()
+                    .map(row -> ((Number) row.get("productId")).longValue()).collect(Collectors.toList());
             
             if (purchasedProductIds == null || purchasedProductIds.isEmpty()) {
                 // 没有购买记录，返回热销商品
                 log.info("用户{}没有购买记录，返回热销商品", userId);
-                return getHotProducts(safeLimit);
+                return cacheRecommendations(cacheKey, getHotProducts(safeLimit));
             }
             
             // 2. 查询用户购买过的商品详情，获取分类信息
-            List<Product> purchasedProducts = productMapper.selectBatchIds(purchasedProductIds);
-            
-            // 3. 统计用户购买最多的分类
-            Map<Long, Long> categoryCountMap = purchasedProducts.stream()
-                .filter(p -> p.getCategoryId() != null)
-                .collect(Collectors.groupingBy(Product::getCategoryId, Collectors.counting()));
+            // 3. 以购买数量、金额和时间衰减计算分类偏好分，避免只按去重商品数计权。
+            Map<Long, Double> categoryScore = new HashMap<>();
+            for (Map<String, Object> row : purchaseStats) {
+                Object category = row.get("categoryId");
+                if (!(category instanceof Number)) continue;
+                double quantity = ((Number) row.get("quantity")).doubleValue();
+                double amount = row.get("amount") == null ? 0 : Double.parseDouble(row.get("amount").toString());
+                Object lastBuy = row.get("lastBuy");
+                java.time.LocalDate lastBuyDate = lastBuy instanceof java.sql.Timestamp
+                        ? ((java.sql.Timestamp) lastBuy).toLocalDateTime().toLocalDate()
+                        : lastBuy instanceof java.time.LocalDateTime ? ((java.time.LocalDateTime) lastBuy).toLocalDate() : java.time.LocalDate.now();
+                long days = java.time.temporal.ChronoUnit.DAYS.between(lastBuyDate, java.time.LocalDate.now());
+                double decay = Math.exp(-0.03d * Math.max(0, days));
+                categoryScore.merge(((Number) category).longValue(), (quantity + amount / 100d) * decay, Double::sum);
+            }
             
             // 4. 按购买次数排序，获取最喜欢的分类
-            List<Long> favoriteCategories = categoryCountMap.entrySet().stream()
-                .sorted(Map.Entry.<Long, Long>comparingByValue().reversed())
+            List<Long> favoriteCategories = categoryScore.entrySet().stream()
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
                 .map(Map.Entry::getKey)
                 .limit(3) // 取前3个最喜欢的分类
                 .collect(Collectors.toList());
 
             if (favoriteCategories.isEmpty()) {
-                return getHotProducts(safeLimit);
+                return cacheRecommendations(cacheKey, getHotProducts(safeLimit));
             }
             
             // 5. 从这些分类中推荐商品（排除已购买的）
@@ -309,13 +337,24 @@ public class ProductService {
             }
             
             log.info("为用户{}推荐了{}个商品", userId, recommendedProducts.size());
-            return Result.success("获取成功", recommendedProducts);
+            Result<List<Product>> result = Result.success("获取成功", recommendedProducts);
+            cacheRecommendations(cacheKey, result);
+            return result;
             
         } catch (Exception e) {
             log.error("获取个性化推荐失败，返回热销商品", e);
             // 出错时返回热销商品
             return getHotProducts(normalizeLimit(limit));
         }
+    }
+
+    private Result<List<Product>> cacheRecommendations(String key, Result<List<Product>> result) {
+        try {
+            redisTemplate.opsForValue().set(key, objectMapper.writeValueAsString(result.getData()), 15, TimeUnit.MINUTES);
+        } catch (Exception cacheError) {
+            log.debug("写入推荐缓存失败", cacheError);
+        }
+        return result;
     }
 
     private int normalizeLimit(Integer limit) {
@@ -347,6 +386,14 @@ public class ProductService {
      * 添加商品
      */
     public Result<String> addProduct(Product product) {
+        validateProductPrice(product);
+        if (product.getMemberPrice() != null && BigDecimal.ZERO.compareTo(product.getMemberPrice()) == 0) {
+            product.setMemberPrice(null);
+        }
+        if (product.getStock() == null) product.setStock(0);
+        if (product.getSales() == null) product.setSales(0);
+        if (product.getStatus() == null) product.setStatus(1);
+        if (product.getIsRecommend() == null) product.setIsRecommend(0);
         productMapper.insert(product);
         return Result.success("添加成功");
     }
@@ -359,9 +406,33 @@ public class ProductService {
         if (existProduct == null) {
             throw new BusinessException("商品不存在");
         }
-        
+        // 后台编辑提交的是完整表单；价格字段有值时校验，会员价为 null 时允许清空。
+        if (product.getPrice() != null || product.getMemberPrice() != null) {
+            BigDecimal price = product.getPrice() != null ? product.getPrice() : existProduct.getPrice();
+            BigDecimal memberPrice = product.getMemberPrice();
+            if (memberPrice != null && BigDecimal.ZERO.compareTo(memberPrice) == 0) memberPrice = null;
+            validateProductPrice(price, memberPrice);
+            product.setMemberPrice(memberPrice);
+        } else {
+            // 兼容只更新状态/排序等字段的调用，避免 ALWAYS 策略把会员价误清空。
+            product.setMemberPrice(existProduct.getMemberPrice());
+        }
         productMapper.updateById(product);
         return Result.success("更新成功");
+    }
+
+    private void validateProductPrice(Product product) {
+        validateProductPrice(product.getPrice(), product.getMemberPrice());
+    }
+
+    private void validateProductPrice(java.math.BigDecimal price, java.math.BigDecimal memberPrice) {
+        if (price == null || price.compareTo(java.math.BigDecimal.ZERO) < 0) {
+            throw new BusinessException("商品价格不能为负数");
+        }
+        if (memberPrice != null && (memberPrice.compareTo(java.math.BigDecimal.ZERO) < 0
+                || memberPrice.compareTo(price) > 0)) {
+            throw new BusinessException("会员价必须大于等于0且不高于商品原价");
+        }
     }
     
     /**

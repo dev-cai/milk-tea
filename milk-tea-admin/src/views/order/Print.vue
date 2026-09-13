@@ -543,7 +543,7 @@ const saveTemplate = async () => {
 
 // 预览模板
 const previewTemplate = (template) => {
-  // 模拟数据替换
+  // Replace supported placeholders for a template preview.
   let content = template.content
   content = content.replace('{orderNo}', 'MT202411130001')
   content = content.replace('{customerName}', '张三')
@@ -618,7 +618,7 @@ const reprintOrder = async (record) => {
 
 // 查看打印内容
 const viewPrintContent = (record) => {
-  // 模拟完整的打印记录数据
+  // Render the selected record with the same template used by the printer.
   currentPrintRecord.value = {
     ...record,
     content: generatePrintContent(record),

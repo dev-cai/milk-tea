@@ -268,8 +268,8 @@ export default {
 				}
 			} catch (error) {
 				console.error('获取邀请码失败:', error)
-				// 使用临时邀请码
-				this.inviteCode = this.generateInviteCode(this.userInfo.id)
+				this.inviteCode = ''
+				uni.showToast({ title: error.message || '邀请码获取失败', icon: 'none' })
 			}
 		},
 		
@@ -328,14 +328,6 @@ export default {
 			}
 		},
 		
-		// 生成邀请码
-		generateInviteCode(userId) {
-			// 简单的邀请码生成逻辑：用户ID转36进制 + 随机字符
-			const base = userId.toString(36).toUpperCase()
-			const random = Math.random().toString(36).substring(2, 6).toUpperCase()
-			return base + random
-		},
-		
 		// 加载邀请数据
 		async loadInviteData() {
 			try {
@@ -350,12 +342,7 @@ export default {
 				}
 			} catch (error) {
 				console.error('加载邀请数据失败:', error)
-				// 使用模拟数据
-				this.inviteStats = {
-					totalInvites: 3,
-					successInvites: 2,
-					totalRewards: 150
-				}
+				this.inviteStats = { totalInvites: 0, successInvites: 0, totalRewards: 0 }
 			}
 			
 			// 加载邀请记录

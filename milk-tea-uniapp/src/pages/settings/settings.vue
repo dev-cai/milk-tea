@@ -232,10 +232,12 @@ export default {
 
 		// 计算缓存大小
 		calculateCacheSize() {
-			// 这里应该计算实际缓存大小
-			// 暂时使用模拟数据
-			const sizes = ['8.2MB', '12.5MB', '15.8MB', '20.1MB']
-			this.cacheSize = sizes[Math.floor(Math.random() * sizes.length)]
+			try {
+				const info = uni.getStorageInfoSync()
+				this.cacheSize = `${(info.currentSize || 0).toFixed(1)}KB`
+			} catch (error) {
+				this.cacheSize = '0KB'
+			}
 		},
 
 		// 跳转个人信息
@@ -316,15 +318,13 @@ export default {
 					if (res.confirm) {
 						uni.showLoading({ title: '清理中...' })
 						
-						// 模拟清理过程
-						setTimeout(() => {
+						try {
+							uni.removeStorageSync('appSettings')
+							this.calculateCacheSize()
+							uni.showToast({ title: '缓存清理完成', icon: 'success' })
+						} finally {
 							uni.hideLoading()
-							this.cacheSize = '0MB'
-							uni.showToast({
-								title: '缓存清理完成',
-								icon: 'success'
-							})
-						}, 2000)
+						}
 					}
 				}
 			})
@@ -334,16 +334,21 @@ export default {
 		checkUpdate() {
 			uni.showLoading({ title: '检查中...' })
 			
-			// 模拟检查更新
-			setTimeout(() => {
+			const updateManager = typeof uni.getUpdateManager === 'function' ? uni.getUpdateManager() : null
+			if (!updateManager) {
 				uni.hideLoading()
-				uni.showModal({
-					title: '检查更新',
-					content: '当前已是最新版本',
-					showCancel: false,
-					confirmText: '确定'
-				})
-			}, 2000)
+				uni.showToast({ title: '当前平台不支持在线更新', icon: 'none' })
+				return
+			}
+			updateManager.onCheckForUpdate((result) => {
+				uni.hideLoading()
+				if (!result.hasUpdate) uni.showToast({ title: '当前已是最新版本', icon: 'none' })
+			})
+			updateManager.onUpdateReady(() => updateManager.applyUpdate())
+			updateManager.onUpdateFailed(() => {
+				uni.hideLoading()
+				uni.showToast({ title: '更新检查失败', icon: 'none' })
+			})
 		},
 
 		// 跳转意见反馈

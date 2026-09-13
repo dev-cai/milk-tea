@@ -166,7 +166,8 @@ export const throttle = (func, limit) => {
 
 // 生成唯一ID
 export const generateId = () => {
-	return Date.now().toString(36) + Math.random().toString(36).substr(2)
+	if (typeof crypto !== 'undefined' && crypto.randomUUID) return crypto.randomUUID()
+	return `${Date.now().toString(36)}-${Date.now().toString(36)}`
 }
 
 // 深拷贝（优化版本）

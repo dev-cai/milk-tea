@@ -284,8 +284,6 @@ import { ref, reactive, onMounted, onUnmounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import request from '@/utils/request'
 
-// 语音提醒音频
-const notificationAudio = new Audio('/notification.mp3') // 需要在public目录放置提示音文件
 let lastOrderCount = 0 // 记录上次订单数量
 
 // 语音提醒开关状态（从localStorage读取，默认开启）
@@ -342,7 +340,7 @@ onUnmounted(() => {
 const checkNewOrders = async () => {
   try {
     const res = await request({
-      url: '/admin/order/pending-count',
+      url: '/admin/order/pending/count',
       method: 'get'
     })
     if (res.code === 200) {
@@ -373,20 +371,28 @@ const checkNewOrders = async () => {
 
 // 播放语音提醒
 const playNotification = () => {
-  try {
-    notificationAudio.play().catch(err => {
-      console.warn('语音提醒播放失败:', err)
-      // 如果音频播放失败，使用浏览器通知
-      if ('Notification' in window && Notification.permission === 'granted') {
-        new Notification('新订单提醒', {
-          body: '您有新的订单需要处理',
-          icon: '/logo.png'
-        })
-      }
-    })
-  } catch (error) {
-    console.error('播放提醒音失败:', error)
-  }
+	try {
+		// Generate a short notification tone locally; this avoids a missing static mp3 asset.
+		const AudioContext = window.AudioContext || window.webkitAudioContext
+		if (!AudioContext) throw new Error('当前浏览器不支持音频提醒')
+		const context = new AudioContext()
+		const oscillator = context.createOscillator()
+		const gain = context.createGain()
+		oscillator.type = 'sine'
+		oscillator.frequency.value = 880
+		gain.gain.setValueAtTime(0.001, context.currentTime)
+		gain.gain.exponentialRampToValueAtTime(0.18, context.currentTime + 0.02)
+		gain.gain.exponentialRampToValueAtTime(0.001, context.currentTime + 0.25)
+		oscillator.connect(gain).connect(context.destination)
+		oscillator.start()
+		oscillator.stop(context.currentTime + 0.25)
+		oscillator.addEventListener('ended', () => context.close())
+	} catch (error) {
+		console.warn('语音提醒播放失败:', error)
+		if ('Notification' in window && Notification.permission === 'granted') {
+			new Notification('新订单提醒', { body: '您有新的订单需要处理' })
+		}
+	}
 }
 
 // 处理语音提醒开关切换
@@ -725,9 +731,9 @@ const getStatusTag = (status) => {
 
 const getPayTypeName = (payType) => {
   const payTypeMap = {
-    1: '微信支付',
-    2: '余额支付',
-    3: '组合支付'
+    1: '微信支付（开发测试）',
+    2: '微信支付（历史订单）',
+    3: '微信支付（历史订单）'
   }
   return payTypeMap[payType] || '未知'
 }
@@ -735,8 +741,8 @@ const getPayTypeName = (payType) => {
 const getPayTypeTag = (payType) => {
   const tagMap = {
     1: 'success',
-    2: 'primary',
-    3: 'warning'
+    2: 'info',
+    3: 'info'
   }
   return tagMap[payType] || 'info'
 }

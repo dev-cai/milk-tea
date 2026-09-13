@@ -85,8 +85,8 @@ public class DashboardServiceImpl implements DashboardService {
                         .eq("deleted", 0);
             Integer lowStockProducts = Math.toIntExact(productMapper.selectCount(lowStockQuery));
             
-            // 在线用户数（模拟数据）
-            Integer onlineUsers = (int) (Math.random() * 50) + 20;
+            // 在线人数需要接入在线会话/Redis；没有可靠数据时返回 0，不伪造运营指标。
+            Integer onlineUsers = 0;
             
             // 今日新用户
             QueryWrapper<User> todayNewUserQuery = new QueryWrapper<>();
@@ -146,6 +146,12 @@ public class DashboardServiceImpl implements DashboardService {
         List<Integer> orders = new ArrayList<>();
         
         try {
+            days = days == null ? 7 : Math.max(1, Math.min(days, 90));
+            Map<LocalDate, Map<String, Object>> aggregated = orderMapper.selectSalesTrend(LocalDate.now().minusDays(days - 1).atStartOfDay())
+                    .stream().collect(java.util.stream.Collectors.toMap(row -> {
+                        Object value = row.get("day");
+                        return value instanceof java.sql.Date ? ((java.sql.Date) value).toLocalDate() : LocalDate.parse(value.toString());
+                    }, row -> row));
             for (int i = days - 1; i >= 0; i--) {
                 LocalDate date = LocalDate.now().minusDays(i);
                 LocalDateTime dayStart = date.atStartOfDay();
@@ -153,29 +159,15 @@ public class DashboardServiceImpl implements DashboardService {
                 
                 dates.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
                 
-                // 查询当日订单
-                QueryWrapper<Order> dayOrderQuery = new QueryWrapper<>();
-                dayOrderQuery.ge("create_time", dayStart)
-                            .lt("create_time", dayEnd)
-                            .in("status", Arrays.asList(1, 2, 3, 4)); // 已支付订单
-                
-                List<Order> dayOrders = orderMapper.selectList(dayOrderQuery);
-                orders.add(dayOrders.size());
-                
-                BigDecimal daySales = dayOrders.stream()
-                        .map(Order::getPayAmount)
-                        .reduce(BigDecimal.ZERO, BigDecimal::add);
-                sales.add(daySales);
+                Map<String, Object> row = aggregated.get(date);
+                orders.add(row == null ? 0 : ((Number) row.get("orderCount")).intValue());
+                sales.add(row == null ? BigDecimal.ZERO : new BigDecimal(row.get("amount").toString()));
             }
         } catch (Exception e) {
             log.error("获取销售趋势数据失败", e);
-            // 返回模拟数据
-            for (int i = days - 1; i >= 0; i--) {
-                LocalDate date = LocalDate.now().minusDays(i);
-                dates.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
-                sales.add(new BigDecimal((Math.random() * 2000) + 1000));
-                orders.add((int) (Math.random() * 50) + 50);
-            }
+            dates.clear();
+            sales.clear();
+            orders.clear();
         }
         
         trendData.put("dates", dates);
@@ -191,23 +183,13 @@ public class DashboardServiceImpl implements DashboardService {
         int safeLimit = limit == null ? 10 : Math.max(1, Math.min(limit, 50));
         
         try {
-            // 查询销量排行前N的商品
-            QueryWrapper<Product> productQuery = new QueryWrapper<>();
-            productQuery.eq("status", 1)
-                       .eq("deleted", 0)
-                       .orderByDesc("sales")
-                       .last("LIMIT " + safeLimit);
-            
-            List<Product> products = productMapper.selectList(productQuery);
-            
             List<String> productNames = new ArrayList<>();
             List<Integer> salesCount = new ArrayList<>();
             List<BigDecimal> salesAmount = new ArrayList<>();
-            
-            for (Product product : products) {
-                productNames.add(product.getName());
-                salesCount.add(product.getSales());
-                salesAmount.add(product.getPrice().multiply(new BigDecimal(product.getSales())));
+            for (Map<String, Object> row : orderMapper.selectProductRanking(safeLimit)) {
+                productNames.add(String.valueOf(row.get("productName")));
+                salesCount.add(((Number) row.get("quantity")).intValue());
+                salesAmount.add(new BigDecimal(row.get("revenue").toString()));
             }
             
             rankingData.put("names", productNames);
@@ -216,23 +198,9 @@ public class DashboardServiceImpl implements DashboardService {
             
         } catch (Exception e) {
             log.error("获取商品销售排行失败", e);
-            // 返回模拟数据
-            List<String> productNames = Arrays.asList(
-                "珍珠奶茶", "芋泥奶茶", "芝士奶盖茶", "百香果茶", "波霸奶茶",
-                "红豆奶茶", "椰果奶茶", "布丁奶茶", "仙草奶茶", "双拼奶茶"
-            );
-            List<Integer> salesCount = Arrays.asList(156, 145, 134, 112, 98, 87, 76, 65, 54, 43);
-            List<BigDecimal> salesAmount = Arrays.asList(
-                new BigDecimal("1872.00"), new BigDecimal("1740.00"), new BigDecimal("2412.00"),
-                new BigDecimal("1792.00"), new BigDecimal("1274.00"), new BigDecimal("1218.00"),
-                new BigDecimal("1064.00"), new BigDecimal("910.00"), new BigDecimal("756.00"),
-                new BigDecimal("602.00")
-            );
-            
-            int actualLimit = Math.min(safeLimit, productNames.size());
-            rankingData.put("names", productNames.subList(0, actualLimit));
-            rankingData.put("salesCount", salesCount.subList(0, actualLimit));
-            rankingData.put("salesAmount", salesAmount.subList(0, actualLimit));
+            rankingData.put("names", Collections.emptyList());
+            rankingData.put("salesCount", Collections.emptyList());
+            rankingData.put("salesAmount", Collections.emptyList());
         }
         
         return rankingData;
@@ -246,6 +214,7 @@ public class DashboardServiceImpl implements DashboardService {
         List<Integer> totalUsers = new ArrayList<>();
         
         try {
+            days = days == null ? 7 : Math.max(1, Math.min(days, 90));
             // 获取总用户数基数
             QueryWrapper<User> totalQuery = new QueryWrapper<>();
             totalQuery.eq("deleted", 0)
@@ -272,17 +241,9 @@ public class DashboardServiceImpl implements DashboardService {
             }
         } catch (Exception e) {
             log.error("获取用户增长数据失败", e);
-            // 返回模拟数据
-            int baseUsers = 1200;
-            for (int i = days - 1; i >= 0; i--) {
-                LocalDate date = LocalDate.now().minusDays(i);
-                dates.add(date.format(DateTimeFormatter.ofPattern("MM-dd")));
-                
-                int dailyNew = (int) (Math.random() * 20) + 5;
-                newUsers.add(dailyNew);
-                baseUsers += dailyNew;
-                totalUsers.add(baseUsers);
-            }
+            dates.clear();
+            newUsers.clear();
+            totalUsers.clear();
         }
         
         growthData.put("dates", dates);
@@ -395,17 +356,8 @@ public class DashboardServiceImpl implements DashboardService {
             
         } catch (Exception e) {
             log.error("获取订单状态分布失败", e);
-            // 返回模拟数据
-            Map<String, Integer> statusCount = new HashMap<>();
-            statusCount.put("pending", 15);
-            statusCount.put("processing", 23);
-            statusCount.put("ready", 8);
-            statusCount.put("completed", 113);
-            statusCount.put("cancelled", 5);
-            statusCount.put("refunded", 2);
-            
-            statusData.put("statusCount", statusCount);
-            statusData.put("totalToday", 166);
+            statusData.put("statusCount", Collections.emptyMap());
+            statusData.put("totalToday", 0);
         }
         
         return statusData;

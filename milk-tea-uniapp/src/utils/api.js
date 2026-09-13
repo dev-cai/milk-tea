@@ -1,6 +1,7 @@
 // API配置和封装
 const config = {
-	baseUrl: 'http://47.239.246.117:8080/api',
+	// Override VITE_API_BASE_URL in each build environment; never ship a plain HTTP IP.
+	baseUrl: __API_BASE_URL__,
 	timeout: 10000,
 	header: {
 		'Content-Type': 'application/json'
@@ -138,8 +139,43 @@ const request = (options) => {
 	})
 }
 
+// Multipart upload helper shares the same environment-based API base URL and auth header.
+const uploadFile = (options = {}) => new Promise((resolve, reject) => {
+	const token = uni.getStorageSync('token')
+	const url = options.url && options.url.startsWith('http') ? options.url : config.baseUrl + (options.url || '')
+	uni.uploadFile({
+		...options,
+		url,
+		name: options.name || 'file',
+		header: {
+			...options.header,
+			...(token ? { Authorization: `Bearer ${token}` } : {})
+		},
+		success: (response) => {
+			try {
+				const data = typeof response.data === 'string' ? JSON.parse(response.data) : response.data
+				if (response.statusCode === 200 && data.code === 200) {
+					resolve(data)
+				} else {
+					reject(data || response)
+				}
+			} catch (error) {
+				reject(error)
+			}
+		},
+		fail: reject
+	})
+})
+
 // API接口定义
 const api = {
+	file: {
+		uploadAvatar: (filePath) => uploadFile({
+			url: '/file/upload-avatar',
+			filePath,
+			name: 'file'
+		})
+	},
 	// 认证相关
 	auth: {
 		// 微信登录
@@ -242,6 +278,10 @@ const api = {
 			url: `/user/addresses`,
 			method: 'GET',
 			data: { userId }
+		}),
+		getAddress: (id) => request({
+			url: `/user/address/${id}`,
+			method: 'GET'
 		}),
 		
 		// 添加地址
@@ -453,32 +493,12 @@ const api = {
 			data
 		}),
 		
-		// 支付宝支付
-		alipay: (data) => request({
-			url: '/payment/alipay',
-			method: 'POST',
-			data
-		}),
-		
-		// 余额支付
-		balancePay: (data) => request({
-			url: '/payment/balance-pay',
-			method: 'POST',
-			data
-		}),
-		
 		// 查询支付状态
 		queryStatus: (orderNo) => request({
 			url: `/payment/status/${orderNo}`,
 			method: 'GET'
 		}),
 		
-		// 充值
-		recharge: (data) => request({
-			url: '/payment/recharge',
-			method: 'POST',
-			data
-		})
 	},
 	
 	// 营销活动
