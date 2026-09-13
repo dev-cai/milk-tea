@@ -1,0 +1,1 @@
+<?xml version="1.0" encoding="UTF-8" ?><!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" "http://mybatis.org/dtd/mybatis-3-mapper.dtd"><mapper namespace="com.milktea.mapper.RefundRequestMapper"><update id="processIfPending">UPDATE refund_request SET status=#{status},process_time=NOW(),reject_reason=#{rejectReason} WHERE id=#{id} AND status=0</update></mapper>
